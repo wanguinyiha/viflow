@@ -1,26 +1,106 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-ink: #16233B;
+  --color-ink-light: #233555;
+  --color-ink-soft: #3B4B67;
+  --color-parchment: #F4EEDF;
+  --color-parchment-dim: #EBE3CE;
+  --color-parchment-line: #DCD1B2;
+  --color-brass: #B8863B;
+  --color-brass-light: #D3A65C;
+  --color-brass-dark: #8F6A2C;
+  --color-sage: #5C7A5E;
+  --color-sage-light: #7A9A7C;
+  --color-sage-dim: #43594A;
+  --color-slate: #5B6472;
+
+  --font-display: var(--font-fraunces), serif;
+  --font-body: var(--font-public-sans), sans-serif;
+  --font-mono: var(--font-plex-mono), monospace;
+
+  --radius-card: 6px;
+
+  --animate-badge-in: badge-in 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-stamp-in: stamp-in 0.4s ease-out both;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+@keyframes badge-in {
+  0% { opacity: 0; transform: translateY(-24px) rotate(-9deg); }
+  60% { opacity: 1; transform: translateY(6px) rotate(4deg); }
+  100% { opacity: 1; transform: translateY(0) rotate(-3deg); }
+}
+
+@keyframes stamp-in {
+  0% { opacity: 0; transform: scale(1.6); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: #F4EEDF;
+  color: #16233B;
+}
+
+::selection {
+  background-color: #B8863B;
+  color: #F4EEDF;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Perforated ticket edge — a row of punched holes, used on pass/card elements */
+.perf-edge-bottom {
+  position: relative;
+}
+.perf-edge-bottom::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 12px;
+  background-image: radial-gradient(circle, #F4EEDF 3.5px, transparent 3.6px);
+  background-size: 18px 12px;
+  background-position: 9px 0;
+}
+
+.perf-edge-top {
+  position: relative;
+}
+.perf-edge-top::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -1px;
+  height: 12px;
+  background-image: radial-gradient(circle, #F4EEDF 3.5px, transparent 3.6px);
+  background-size: 18px 12px;
+  background-position: 9px 0;
+  z-index: 1;
+}
+
+/* Hole punch, like a lanyard card */
+.hole-punch {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #F4EEDF;
+  box-shadow: inset 0 2px 3px rgba(22, 35, 59, 0.35);
+}
+
+.focus-ring:focus-visible {
+  outline: 2px solid #B8863B;
+  outline-offset: 3px;
 }
