@@ -18,13 +18,13 @@ export default function Header() {
 
         <div className="flex items-center gap-3">
           <a
-            href="#login"
+            href="/login"
             className="hidden font-body text-[15px] text-ink/80 hover:text-ink focus-ring rounded-sm sm:inline-block"
           >
             Log in
           </a>
           <a
-            href="#get-started"
+            href="/signup"
             className="focus-ring rounded-card bg-ink px-4 py-2 font-body text-[15px] font-medium text-parchment transition-colors hover:bg-ink-light"
           >
             Set up your hostel

@@ -12,16 +12,16 @@ export default function CtaFooter() {
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
             <a
-              href="#"
+              href="/signup"
               className="focus-ring rounded-card bg-ink px-6 py-3.5 font-body text-[15px] font-medium text-parchment transition-colors hover:bg-ink-light"
             >
               Set up your hostel
             </a>
             <a
-              href="#"
+              href="/login"
               className="focus-ring rounded-card border border-ink/20 px-6 py-3.5 font-body text-[15px] font-medium text-ink transition-colors hover:border-ink/40"
             >
-              Talk to us first
+              Log in
             </a>
           </div>
         </div>
@@ -37,9 +37,11 @@ export default function CtaFooter() {
             </p>
           </div>
           <div className="grid grid-cols-2 gap-x-12 gap-y-2 text-sm sm:grid-cols-3">
-            <a href="#how-it-works" className="focus-ring rounded-sm hover:text-parchment">How it works</a>
-            <a href="#roles" className="focus-ring rounded-sm hover:text-parchment">Who it&apos;s for</a>
-            <a href="#faq" className="focus-ring rounded-sm hover:text-parchment">Questions</a>
+            <a href="/#how-it-works" className="focus-ring rounded-sm hover:text-parchment">How it works</a>
+            <a href="/#roles" className="focus-ring rounded-sm hover:text-parchment">Who it&apos;s for</a>
+            <a href="/#faq" className="focus-ring rounded-sm hover:text-parchment">Questions</a>
+            <a href="/login" className="focus-ring rounded-sm hover:text-parchment">Log in</a>
+            <a href="/signup" className="focus-ring rounded-sm hover:text-parchment">Sign up</a>
           </div>
         </div>
         <div className="border-t border-parchment/10 px-6 py-5 text-xs text-parchment/50 md:px-10">
