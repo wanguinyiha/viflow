@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import { supabase } from "@/lib/supabaseClient";
-import type { Profile, VisitorProfile } from "@/lib/auth";
+import type { Profile, VisitorProfile } from "@/lib/types";
 
 interface Invitation {
   id: string;

@@ -17,14 +17,8 @@ export default function Hero() {
           </p>
           <div className="mt-9 flex flex-wrap items-center gap-4">
             <a
-              href="#get-started"
-              className="focus-ring rounded-card bg-ink px-6 py-3.5 font-body text-[15px] font-medium text-parchment transition-colors hover:bg-ink-light"
-            >
-              Bring ViFlow to your hostel
-            </a>
-            <a
               href="#how-it-works"
-              className="focus-ring rounded-card border border-ink/20 px-6 py-3.5 font-body text-[15px] font-medium text-ink transition-colors hover:border-ink/40"
+              className="focus-ring rounded-card bg-ink px-6 py-3.5 font-body text-[15px] font-medium text-parchment transition-colors hover:bg-ink-light"
             >
               See how a visit works
             </a>

@@ -1,85 +1,51 @@
-import { supabase } from "./supabaseClient";
+import { createClient } from "@supabase/supabase-js";
+import type { UserRole } from "./types";
 
-export type UserRole = "visitor" | "resident" | "guard" | "admin";
+export type { UserRole };
 
-export interface Profile {
-  id: string;
-  full_name: string;
-  email: string;
-  phone: string | null;
-  role: UserRole;
-  created_at: string;
-  updated_at: string;
-}
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
 
-export interface VisitorProfile {
-  id: string;
-  user_id: string;
-  id_document_url: string | null;
-  id_verified: boolean;
-  photo_url: string | null;
-  photo_verified: boolean;
-  vehicle_plate: string | null;
-  created_at: string;
-  updated_at: string;
-}
+// Client-side Supabase client (for use in client components)
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-export async function getCurrentUser() {
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) return null;
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
-
-  return profile as Profile | null;
-}
-
-export async function getVisitorProfile(userId: string) {
-  const { data } = await supabase
-    .from("visitor_profiles")
-    .select("*")
-    .eq("user_id", userId)
-    .single();
-
-  return data as VisitorProfile | null;
-}
-
-export async function signUp(
-  email: string,
-  password: string,
-  fullName: string,
-  role: UserRole
-) {
-  const { data, error } = await supabase.auth.signUp({
+export async function signUp(email: string, password: string, fullName: string, role: UserRole = "visitor") {
+  return supabase.auth.signUp({
     email,
     password,
-    options: {
-      data: {
-        full_name: fullName,
-        role,
-      },
-    },
+    options: { data: { full_name: fullName, role } },
   });
-
-  return { data, error };
 }
 
 export async function signIn(email: string, password: string) {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-
-  return { data, error };
+  return supabase.auth.signInWithPassword({ email, password });
 }
 
 export async function signOut() {
-  await supabase.auth.signOut();
+  return supabase.auth.signOut();
+}
+
+export async function resetPassword(email: string) {
+  return supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${typeof window !== "undefined" ? window.location.origin : ""}/reset-password`,
+  });
+}
+
+export async function updatePassword(newPassword: string) {
+  return supabase.auth.updateUser({ password: newPassword });
+}
+
+export async function getCurrentUser() {
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) return null;
+  return user;
+}
+
+export async function getUserProfile(userId: string) {
+  const { data } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", userId)
+    .single();
+  return data;
 }

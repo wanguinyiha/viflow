@@ -35,6 +35,25 @@ export default function Signup() {
       return;
     }
 
+    // Manually create profile (triggers removed for stability)
+    if (data?.user?.id) {
+      const { supabase } = await import("@/lib/supabaseClient");
+      await supabase.from("profiles").upsert({
+        id: data.user.id,
+        full_name: fullName,
+        email,
+        role,
+      }, { onConflict: "id" });
+
+      if (role === "visitor") {
+        await supabase.from("visitor_profiles").upsert({
+          user_id: data.user.id,
+          full_name: fullName,
+          email,
+        }, { onConflict: "user_id" });
+      }
+    }
+
     // Redirect to login after successful signup
     router.push("/login");
   }

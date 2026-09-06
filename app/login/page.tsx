@@ -83,7 +83,7 @@ export default function Login() {
             <label htmlFor="password" className="text-sm font-medium text-ink/80">
               Password
             </label>
-            <a href="#" className="focus-ring rounded-sm text-sm text-ink/50 hover:text-ink/80">
+            <a href="/forgot-password" className="focus-ring rounded-sm text-sm text-ink/50 hover:text-ink/80">
               Forgot?
             </a>
           </div>

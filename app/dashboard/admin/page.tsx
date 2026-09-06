@@ -2,130 +2,45 @@
 
 import { useEffect, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
+import StatCard from "@/components/ui/StatCard";
 import { supabase } from "@/lib/supabaseClient";
-import type { Profile } from "@/lib/auth";
-
-interface Stats {
-  residents: number;
-  roomsOccupied: number;
-  totalRooms: number;
-  visitsToday: number;
-  pendingAuthorizations: number;
-}
-
-interface Resident {
-  id: string;
-  full_name: string;
-  rooms: { room_number: string; block: string } | null;
-  visitsThisMonth: number;
-}
-
-interface Room {
-  id: string;
-  room_number: string;
-  block: string;
-  is_occupied: boolean;
-  resident_name: string | null;
-}
-
-interface Policy {
-  id: string;
-  key: string;
-  value: any;
-}
+import type { Profile, DashboardStats } from "@/lib/types";
 
 export default function AdminDashboard() {
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [stats, setStats] = useState<Stats>({ residents: 0, roomsOccupied: 0, totalRooms: 0, visitsToday: 0, pendingAuthorizations: 0 });
-  const [residents, setResidents] = useState<Resident[]>([]);
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [policies, setPolicies] = useState<Policy[]>([]);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-
-      const { data: prof } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
+      const { data: prof } = await supabase.from("profiles").select("*").eq("id", user.id).single();
       setProfile(prof);
-
-      // Stats
-      const { count: residentCount } = await supabase
-        .from("profiles")
-        .select("*", { count: "exact", head: true })
-        .eq("role", "resident");
-
-      const { count: roomCount } = await supabase
-        .from("rooms")
-        .select("*", { count: "exact", head: true });
-
-      const { count: occupiedCount } = await supabase
-        .from("rooms")
-        .select("*", { count: "exact", head: true })
-        .eq("is_occupied", true);
 
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const { count: visitCount } = await supabase
-        .from("visits")
-        .select("*", { count: "exact", head: true })
-        .gte("created_at", today.toISOString());
 
-      const { count: pendingCount } = await supabase
-        .from("invitations")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "pending");
+      const [visitors, residents, guards, active, todays, rooms] = await Promise.all([
+        supabase.from("profiles").select("*", { count: "exact", head: true }).eq("role", "visitor"),
+        supabase.from("profiles").select("*", { count: "exact", head: true }).eq("role", "resident"),
+        supabase.from("profiles").select("*", { count: "exact", head: true }).eq("role", "guard"),
+        supabase.from("visits").select("*", { count: "exact", head: true }).eq("status", "checked_in"),
+        supabase.from("visits").select("*", { count: "exact", head: true }).gte("created_at", today.toISOString()),
+        supabase.from("rooms").select("*", { count: "exact", head: true }),
+      ]);
 
       setStats({
-        residents: residentCount ?? 0,
-        roomsOccupied: occupiedCount ?? 0,
-        totalRooms: roomCount ?? 0,
-        visitsToday: visitCount ?? 0,
-        pendingAuthorizations: pendingCount ?? 0,
+        totalVisitors: visitors.count ?? 0,
+        totalResidents: residents.count ?? 0,
+        totalGuards: guards.count ?? 0,
+        activeVisits: active.count ?? 0,
+        todaysVisits: todays.count ?? 0,
+        pendingVerifications: 0,
+        flaggedActivity: 0,
+        roomsOccupied: 0,
+        totalRooms: rooms.count ?? 0,
       });
-
-      // Residents with their rooms
-      const { data: resData } = await supabase
-        .from("profiles")
-        .select("id, full_name, rooms(room_number, block)")
-        .eq("role", "resident");
-
-      const residentsWithVisits = await Promise.all(
-        (resData ?? []).map(async (r) => {
-          const monthStart = new Date();
-          monthStart.setDate(1);
-          monthStart.setHours(0, 0, 0, 0);
-          const { count } = await supabase
-            .from("visits")
-            .select("*", { count: "exact", head: true })
-            .eq("resident_id", r.id)
-            .gte("created_at", monthStart.toISOString());
-          return { ...r, visitsThisMonth: count ?? 0 };
-        })
-      );
-      setResidents(residentsWithVisits as unknown as Resident[]);
-
-      // Rooms
-      const { data: roomData } = await supabase
-        .from("rooms")
-        .select("*, profiles:resident_id(full_name)");
-      setRooms(
-        (roomData ?? []).map((r: any) => ({
-          ...r,
-          resident_name: r.profiles?.full_name ?? null,
-        }))
-      );
-
-      // Policies
-      const { data: polData } = await supabase.from("policies").select("*");
-      setPolicies((polData as Policy[]) ?? []);
 
       setLoading(false);
     }
@@ -135,7 +50,11 @@ export default function AdminDashboard() {
   if (loading || !profile) {
     return (
       <DashboardShell role="admin" roleLabel="Administrator" personName="Loading…">
-        <p className="font-mono text-[13px] text-brass-dark">Loading…</p>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-24 animate-pulse rounded-card border border-ink/10 bg-parchment-dim" />
+          ))}
+        </div>
       </DashboardShell>
     );
   }
@@ -144,99 +63,52 @@ export default function AdminDashboard() {
     <DashboardShell role="admin" roleLabel="Administrator" personName={profile.full_name}>
       <h1 className="font-display text-3xl italic text-ink">Admin Dashboard</h1>
 
-      <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-card border border-ink/15 bg-parchment-dim px-5 py-4">
-          <p className="font-mono text-2xl text-ink">{stats.residents}</p>
-          <p className="mt-1 text-sm text-ink/60">Residents</p>
-        </div>
-        <div className="rounded-card border border-ink/15 bg-parchment-dim px-5 py-4">
-          <p className="font-mono text-2xl text-ink">{stats.roomsOccupied} / {stats.totalRooms}</p>
-          <p className="mt-1 text-sm text-ink/60">Rooms occupied</p>
-        </div>
-        <div className="rounded-card border border-ink/15 bg-parchment-dim px-5 py-4">
-          <p className="font-mono text-2xl text-ink">{stats.visitsToday}</p>
-          <p className="mt-1 text-sm text-ink/60">Visits today</p>
-        </div>
-        <div className="rounded-card border border-ink/15 bg-parchment-dim px-5 py-4">
-          <p className="font-mono text-2xl text-ink">{stats.pendingAuthorizations}</p>
-          <p className="mt-1 text-sm text-ink/60">Pending authorizations</p>
-        </div>
+      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Total Visitors" value={stats?.totalVisitors ?? 0} />
+        <StatCard label="Total Residents" value={stats?.totalResidents ?? 0} />
+        <StatCard label="Total Guards" value={stats?.totalGuards ?? 0} />
+        <StatCard label="Active Visits" value={stats?.activeVisits ?? 0} />
+        <StatCard label="Today's Visits" value={stats?.todaysVisits ?? 0} />
+        <StatCard label="Total Rooms" value={stats?.totalRooms ?? 0} />
       </div>
 
-      <div className="mt-10 grid gap-6 lg:grid-cols-[1.3fr_1fr]">
-        <div>
-          <div className="flex items-center justify-between">
-            <h2 className="font-display text-xl text-ink">Residents</h2>
-          </div>
-          {residents.length === 0 ? (
-            <p className="mt-4 text-sm text-ink/50">No residents yet.</p>
-          ) : (
-            <div className="mt-4 overflow-hidden rounded-card border border-ink/15">
-              <table className="w-full min-w-[420px] border-collapse text-left">
-                <thead>
-                  <tr className="border-b border-ink/15 bg-parchment-dim text-sm text-ink/60">
-                    <th className="px-6 py-3 font-medium">Name</th>
-                    <th className="px-6 py-3 font-medium">Room</th>
-                    <th className="px-6 py-3 font-medium">Visits this month</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {residents.map((r, i) => (
-                    <tr key={r.id} className={i !== residents.length - 1 ? "border-b border-ink/10" : ""}>
-                      <td className="px-6 py-3 text-[15px] text-ink">{r.full_name}</td>
-                      <td className="px-6 py-3 text-[15px] text-ink/70">
-                        {r.rooms ? `${r.rooms.room_number}, ${r.rooms.block}` : "—"}
-                      </td>
-                      <td className="px-6 py-3 font-mono text-sm text-ink/70">{r.visitsThisMonth}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        <div className="rounded-card border border-ink/15 bg-parchment-dim p-6">
-          <h2 className="font-display text-xl text-ink">Policies</h2>
-          <ul className="mt-4 space-y-4 text-[15px] text-ink/75">
-            {policies.map((p) => (
-              <li key={p.id} className="flex items-start justify-between gap-3 border-b border-ink/10 pb-3 last:border-b-0">
-                <span className="capitalize">{p.key.replace(/_/g, " ")}</span>
-                <span className="font-mono text-xs text-sage-dim">{p.value === true || p.value === "true" ? "On" : "Off"}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-
-      <div className="mt-10">
-        <h2 className="font-display text-xl text-ink">Rooms</h2>
-        {rooms.length === 0 ? (
-          <p className="mt-4 text-sm text-ink/50">No rooms configured. Ask an admin to add rooms via the SQL editor.</p>
-        ) : (
-          <div className="mt-4 overflow-hidden rounded-card border border-ink/15">
-            <table className="w-full min-w-[420px] border-collapse text-left">
-              <thead>
-                <tr className="border-b border-ink/15 bg-parchment-dim text-sm text-ink/60">
-                  <th className="px-6 py-3 font-medium">Room</th>
-                  <th className="px-6 py-3 font-medium">Block</th>
-                  <th className="px-6 py-3 font-medium">Resident</th>
-                  <th className="px-6 py-3 font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rooms.map((r) => (
-                  <tr key={r.id} className="border-b border-ink/10 last:border-b-0">
-                    <td className="px-6 py-3 text-[15px] text-ink">{r.room_number}</td>
-                    <td className="px-6 py-3 text-[15px] text-ink/70">{r.block}</td>
-                    <td className="px-6 py-3 text-[15px] text-ink/70">{r.resident_name ?? "—"}</td>
-                    <td className="px-6 py-3 text-sm text-sage-dim">{r.is_occupied ? "Occupied" : "Vacant"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <a href="/dashboard/admin/users" className="rounded-card border border-ink/15 bg-parchment-dim p-5 hover:border-ink/25 transition-colors">
+          <h3 className="font-display text-lg text-ink">Users</h3>
+          <p className="mt-1 text-sm text-ink/50">Manage all user accounts</p>
+        </a>
+        <a href="/dashboard/admin/residents" className="rounded-card border border-ink/15 bg-parchment-dim p-5 hover:border-ink/25 transition-colors">
+          <h3 className="font-display text-lg text-ink">Residents</h3>
+          <p className="mt-1 text-sm text-ink/50">Manage resident accounts and rooms</p>
+        </a>
+        <a href="/dashboard/admin/visitors" className="rounded-card border border-ink/15 bg-parchment-dim p-5 hover:border-ink/25 transition-colors">
+          <h3 className="font-display text-lg text-ink">Visitors</h3>
+          <p className="mt-1 text-sm text-ink/50">View visitor profiles and history</p>
+        </a>
+        <a href="/dashboard/admin/guards" className="rounded-card border border-ink/15 bg-parchment-dim p-5 hover:border-ink/25 transition-colors">
+          <h3 className="font-display text-lg text-ink">Guards</h3>
+          <p className="mt-1 text-sm text-ink/50">Manage guard accounts</p>
+        </a>
+        <a href="/dashboard/admin/rooms" className="rounded-card border border-ink/15 bg-parchment-dim p-5 hover:border-ink/25 transition-colors">
+          <h3 className="font-display text-lg text-ink">Rooms</h3>
+          <p className="mt-1 text-sm text-ink/50">Manage hostel rooms</p>
+        </a>
+        <a href="/dashboard/admin/invitations" className="rounded-card border border-ink/15 bg-parchment-dim p-5 hover:border-ink/25 transition-colors">
+          <h3 className="font-display text-lg text-ink">Invitations</h3>
+          <p className="mt-1 text-sm text-ink/50">View all invitations</p>
+        </a>
+        <a href="/dashboard/admin/visits" className="rounded-card border border-ink/15 bg-parchment-dim p-5 hover:border-ink/25 transition-colors">
+          <h3 className="font-display text-lg text-ink">Visits</h3>
+          <p className="mt-1 text-sm text-ink/50">View all visits</p>
+        </a>
+        <a href="/dashboard/admin/audit" className="rounded-card border border-ink/15 bg-parchment-dim p-5 hover:border-ink/25 transition-colors">
+          <h3 className="font-display text-lg text-ink">Audit Logs</h3>
+          <p className="mt-1 text-sm text-ink/50">Review security activity</p>
+        </a>
+        <a href="/dashboard/admin/reports" className="rounded-card border border-ink/15 bg-parchment-dim p-5 hover:border-ink/25 transition-colors">
+          <h3 className="font-display text-lg text-ink">Reports</h3>
+          <p className="mt-1 text-sm text-ink/50">Analytics and statistics</p>
+        </a>
       </div>
     </DashboardShell>
   );

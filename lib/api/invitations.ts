@@ -1,0 +1,116 @@
+import { supabase } from "../supabaseClient";
+import type { Invitation, InvitationStatus } from "../types";
+
+export async function getInvitation(id: string) {
+  const { data, error } = await supabase
+    .from("invitations")
+    .select("*, resident:profiles!invitations_resident_id_fkey(*), room:rooms(*), visitor:visitor_profiles(*), hostel:hostels(*)")
+    .eq("id", id)
+    .single();
+  return { data: data as Invitation | null, error };
+}
+
+export async function getInvitationByCode(visitCode: string) {
+  const { data, error } = await supabase
+    .from("invitations")
+    .select("*, resident:profiles!invitations_resident_id_fkey(*), room:rooms(*), visitor:visitor_profiles(*), hostel:hostels(*)")
+    .eq("visit_code", visitCode)
+    .single();
+  return { data: data as Invitation | null, error };
+}
+
+export async function getResidentInvitations(residentId: string) {
+  const { data, error } = await supabase
+    .from("invitations")
+    .select("*, visitor:visitor_profiles(*), room:rooms(*), hostel:hostels(*)")
+    .eq("resident_id", residentId)
+    .order("created_at", { ascending: false });
+  return { data: (data ?? []) as Invitation[], error };
+}
+
+export async function getVisitorInvitations(visitorEmail: string) {
+  const { data, error } = await supabase
+    .from("invitations")
+    .select("*, resident:profiles!invitations_resident_id_fkey(*), room:rooms(*), hostel:hostels(*)")
+    .eq("visitor_email", visitorEmail)
+    .order("created_at", { ascending: false });
+  return { data: (data ?? []) as Invitation[], error };
+}
+
+export async function createInvitation(invitation: {
+  resident_id: string;
+  visitor_email: string;
+  visitor_name?: string;
+  visitor_id?: string;
+  room_id: string;
+  hostel_id?: string;
+  visit_start: string;
+  visit_end: string;
+  reason?: string;
+  vehicle_registration?: string;
+}) {
+  const { data, error } = await supabase
+    .from("invitations")
+    .insert(invitation)
+    .select()
+    .single();
+  return { data: data as Invitation | null, error };
+}
+
+export async function updateInvitationStatus(id: string, status: InvitationStatus) {
+  const { data, error } = await supabase
+    .from("invitations")
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .select()
+    .single();
+  return { data: data as Invitation | null, error };
+}
+
+export async function cancelInvitation(id: string) {
+  return updateInvitationStatus(id, "cancelled");
+}
+
+export async function acceptInvitation(id: string, visitorId: string) {
+  const { data, error } = await supabase
+    .from("invitations")
+    .update({ status: "accepted", visitor_id: visitorId, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .select()
+    .single();
+  return { data: data as Invitation | null, error };
+}
+
+export async function getActiveInvitationCount(residentId: string) {
+  const { count } = await supabase
+    .from("invitations")
+    .select("*", { count: "exact", head: true })
+    .eq("resident_id", residentId)
+    .in("status", ["pending", "accepted"]);
+  return count ?? 0;
+}
+
+export async function getActiveVisitCount(residentId: string) {
+  const { count } = await supabase
+    .from("visits")
+    .select("*", { count: "exact", head: true })
+    .eq("resident_id", residentId)
+    .in("status", ["authorized", "checked_in"]);
+  return count ?? 0;
+}
+
+export async function getAllInvitations(filters?: {
+  status?: InvitationStatus;
+  resident_id?: string;
+  visitor_email?: string;
+}) {
+  let q = supabase
+    .from("invitations")
+    .select("*, resident:profiles!invitations_resident_id_fkey(full_name, email), room:rooms(room_number, block)")
+    .order("created_at", { ascending: false });
+  if (filters?.status) q = q.eq("status", filters.status);
+  if (filters?.resident_id) q = q.eq("resident_id", filters.resident_id);
+  if (filters?.visitor_email) q = q.eq("visitor_email", filters.visitor_email);
+  const { data, error } = await q;
+  return { data: (data ?? []) as Invitation[], error };
+}
