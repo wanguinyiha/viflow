@@ -7,7 +7,7 @@ import DataTable, { type Column } from "@/components/ui/DataTable";
 import EmptyState from "@/components/ui/EmptyState";
 import FilterBar from "@/components/ui/FilterBar";
 import { supabase } from "@/lib/supabaseClient";
-import type { Profile } from "@/lib/types";
+import { useAuth } from "@/lib/context/AuthContext";
 
 interface VisitorRecord {
   id: string;
@@ -21,22 +21,19 @@ interface VisitorRecord {
 }
 
 export default function MyVisitorsPage() {
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const { user: profile, loading: authLoading } = useAuth();
   const [visitors, setVisitors] = useState<VisitorRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
   useEffect(() => {
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: prof } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-      setProfile(prof);
+      if (!profile) return;
 
       const { data: visits } = await supabase
         .from("visits")
         .select("visitor_id, visitor:visitor_profiles(id, full_name, email, photo_url, id_verified), created_at")
-        .eq("resident_id", user.id)
+        .eq("resident_id", profile.id)
         .order("created_at", { ascending: false });
 
       // Deduplicate visitors
@@ -64,7 +61,7 @@ export default function MyVisitorsPage() {
       setLoading(false);
     }
     load();
-  }, []);
+  }, [profile]);
 
   const columns: Column<VisitorRecord>[] = [
     {
@@ -87,7 +84,7 @@ export default function MyVisitorsPage() {
     { key: "id_verified", label: "ID Verified", render: (row) => row.id_verified ? <span className="text-sage-dim text-sm">Yes</span> : <span className="text-ink/40 text-sm">No</span> },
   ];
 
-  if (loading || !profile) {
+  if (authLoading || loading || !profile) {
     return (
       <DashboardShell role="resident" roleLabel="Resident" personName="Loading…">
         <div className="h-96 animate-pulse rounded-card border border-ink/10 bg-parchment-dim" />

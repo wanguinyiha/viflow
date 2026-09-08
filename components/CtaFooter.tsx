@@ -12,10 +12,16 @@ export default function CtaFooter() {
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
             <a
-              href="/dashboard/resident"
+              href="/signup"
               className="focus-ring rounded-card bg-ink px-6 py-3.5 font-body text-[15px] font-medium text-parchment transition-colors hover:bg-ink-light"
             >
-              Open Dashboard
+              Get started
+            </a>
+            <a
+              href="/login"
+              className="focus-ring rounded-card border border-ink/20 px-6 py-3.5 font-body text-[15px] font-medium text-ink transition-colors hover:bg-ink/5"
+            >
+              Log in
             </a>
           </div>
         </div>

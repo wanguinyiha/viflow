@@ -1,50 +1,73 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 
-const navByRole: Record<string, { label: string; href: string; icon?: string }[]> = {
+type NavItem = { label: string; href: string };
+type NavGroup = { type: "group"; label: string; items: NavItem[] };
+type NavSingle = { type: "single"; label: string; href: string };
+type NavEntry = NavSingle | NavGroup;
+
+const navByRole: Record<string, NavEntry[]> = {
   visitor: [
-    { label: "Overview", href: "/dashboard/visitor" },
-    { label: "My Profile", href: "/dashboard/visitor/profile" },
-    { label: "Invitations", href: "/dashboard/visitor/invitations" },
-    { label: "My Visits", href: "/dashboard/visitor/visits" },
+    { type: "single", label: "Overview", href: "/dashboard/visitor" },
+    { type: "single", label: "My Profile", href: "/dashboard/visitor/profile" },
+    { type: "single", label: "Invitations", href: "/dashboard/visitor/invitations" },
+    { type: "single", label: "My Visits", href: "/dashboard/visitor/visits" },
   ],
   resident: [
-    { label: "Dashboard", href: "/dashboard/resident" },
-    { label: "Create Invitation", href: "/dashboard/resident/invitations/new" },
-    { label: "My Visitors", href: "/dashboard/resident/visitors" },
-    { label: "Favourite Visitors", href: "/dashboard/resident/favourites" },
-    { label: "Invitations", href: "/dashboard/resident/invitations" },
-    { label: "Active Visits", href: "/dashboard/resident/active" },
-    { label: "Visit History", href: "/dashboard/resident/history" },
-    { label: "Profile", href: "/dashboard/resident/profile" },
-    { label: "Settings", href: "/dashboard/resident/settings" },
+    { type: "single", label: "Dashboard", href: "/dashboard/resident" },
+    { type: "single", label: "Create Invitation", href: "/dashboard/resident/invitations/new" },
+    { type: "single", label: "My Visitors", href: "/dashboard/resident/visitors" },
+    { type: "single", label: "Favourite Visitors", href: "/dashboard/resident/favourites" },
+    { type: "single", label: "Invitations", href: "/dashboard/resident/invitations" },
+    { type: "single", label: "Active Visits", href: "/dashboard/resident/active" },
+    { type: "single", label: "Visit History", href: "/dashboard/resident/history" },
+    { type: "single", label: "Profile", href: "/dashboard/resident/profile" },
+    { type: "single", label: "Settings", href: "/dashboard/resident/settings" },
   ],
   guard: [
-    { label: "Dashboard", href: "/dashboard/guard" },
-    { label: "Verify Visitor", href: "/dashboard/guard/verify" },
-    { label: "Active Visitors", href: "/dashboard/guard/active" },
-    { label: "Visit Log", href: "/dashboard/guard/log" },
-    { label: "Activity Review", href: "/dashboard/guard/activity" },
-    { label: "Profile", href: "/dashboard/guard/profile" },
-    { label: "Settings", href: "/dashboard/guard/settings" },
+    { type: "single", label: "Dashboard", href: "/dashboard/guard" },
+    { type: "single", label: "Verify Visitor", href: "/dashboard/guard/verify" },
+    { type: "single", label: "Active Visitors", href: "/dashboard/guard/active" },
+    { type: "single", label: "Visit Log", href: "/dashboard/guard/log" },
+    { type: "single", label: "Activity Review", href: "/dashboard/guard/activity" },
+    { type: "single", label: "Profile", href: "/dashboard/guard/profile" },
+    { type: "single", label: "Settings", href: "/dashboard/guard/settings" },
   ],
   admin: [
-    { label: "Dashboard", href: "/dashboard/admin" },
-    { label: "Users", href: "/dashboard/admin/users" },
-    { label: "Residents", href: "/dashboard/admin/residents" },
-    { label: "Visitors", href: "/dashboard/admin/visitors" },
-    { label: "Guards", href: "/dashboard/admin/guards" },
-    { label: "Hostels", href: "/dashboard/admin/hostels" },
-    { label: "Rooms", href: "/dashboard/admin/rooms" },
-    { label: "Invitations", href: "/dashboard/admin/invitations" },
-    { label: "Visits", href: "/dashboard/admin/visits" },
-    { label: "Verifications", href: "/dashboard/admin/verifications" },
-    { label: "Activity Review", href: "/dashboard/admin/activity" },
-    { label: "Audit Logs", href: "/dashboard/admin/audit" },
-    { label: "Reports", href: "/dashboard/admin/reports" },
-    { label: "Settings", href: "/dashboard/admin/settings" },
+    { type: "single", label: "Dashboard", href: "/dashboard/admin" },
+    {
+      type: "group",
+      label: "People",
+      items: [
+        { label: "Users", href: "/dashboard/admin/users" },
+        { label: "Residents", href: "/dashboard/admin/residents" },
+        { label: "Visitors", href: "/dashboard/admin/visitors" },
+        { label: "Guards", href: "/dashboard/admin/guards" },
+      ],
+    },
+    { type: "single", label: "Rooms", href: "/dashboard/admin/rooms" },
+    {
+      type: "group",
+      label: "Access",
+      items: [
+        { label: "Invitations", href: "/dashboard/admin/invitations" },
+        { label: "Visits", href: "/dashboard/admin/visits" },
+        { label: "Verifications", href: "/dashboard/admin/verifications" },
+        { label: "Vehicles", href: "/dashboard/admin/vehicles" },
+      ],
+    },
+    {
+      type: "group",
+      label: "Security",
+      items: [
+        { label: "Activity Review", href: "/dashboard/admin/activity" },
+        { label: "Audit Logs", href: "/dashboard/admin/audit" },
+      ],
+    },
+    { type: "single", label: "Reports", href: "/dashboard/admin/reports" },
+    { type: "single", label: "Settings", href: "/dashboard/admin/settings" },
   ],
 };
 
@@ -62,14 +85,98 @@ export default function DashboardShell({
   const pathname = usePathname();
   const items = navByRole[role];
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     setSidebarOpen(false);
   }, [pathname]);
 
+  // Auto-expand groups that contain the active page
+  useEffect(() => {
+    const newExpanded: Record<string, boolean> = {};
+    items.forEach((item) => {
+      if (item.type === "group") {
+        const hasActive = item.items.some((child) => pathname.startsWith(child.href));
+        if (hasActive) newExpanded[item.label] = true;
+      }
+    });
+    setExpandedGroups((prev) => ({ ...prev, ...newExpanded }));
+  }, [pathname, items]);
+
+  function toggleGroup(label: string) {
+    setExpandedGroups((prev) => ({ ...prev, [label]: !prev[label] }));
+  }
+
   function isActive(href: string) {
     if (href === `/dashboard/${role}`) return pathname === href;
     return pathname.startsWith(href);
+  }
+
+  function renderItem(entry: NavEntry, depth = 0) {
+    if (entry.type === "single") {
+      return (
+        <a
+          key={entry.label}
+          href={entry.href}
+          className={`focus-ring rounded-sm px-3 py-2 text-[15px] transition-colors ${
+            depth > 0 ? "pl-6 text-[14px]" : ""
+          } ${
+            isActive(entry.href)
+              ? "bg-ink-light text-parchment"
+              : "text-parchment/70 hover:bg-ink-light/60"
+          }`}
+        >
+          {entry.label}
+        </a>
+      );
+    }
+
+    // Group
+    const isExpanded = expandedGroups[entry.label] ?? false;
+    const hasActiveChild = entry.items.some((child) => pathname.startsWith(child.href));
+
+    return (
+      <div key={entry.label}>
+        <button
+          onClick={() => toggleGroup(entry.label)}
+          className={`focus-ring flex w-full items-center justify-between rounded-sm px-3 py-2 text-[15px] transition-colors ${
+            hasActiveChild && !isExpanded
+              ? "text-parchment"
+              : "text-parchment/50 hover:text-parchment/70"
+          }`}
+        >
+          <span className="font-medium uppercase tracking-wider text-[11px]">{entry.label}</span>
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 12 12"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            className={`transition-transform ${isExpanded ? "rotate-90" : ""}`}
+          >
+            <path d="M4 2l4 4-4 4" />
+          </svg>
+        </button>
+        {isExpanded && (
+          <div className="ml-1 mt-0.5 space-y-0.5">
+            {entry.items.map((child) => (
+              <a
+                key={child.href}
+                href={child.href}
+                className={`focus-ring block rounded-sm px-3 py-1.5 text-[14px] transition-colors ${
+                  isActive(child.href)
+                    ? "bg-ink-light text-parchment"
+                    : "text-parchment/60 hover:bg-ink-light/60"
+                }`}
+              >
+                {child.label}
+              </a>
+            ))}
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (
@@ -130,19 +237,7 @@ export default function DashboardShell({
           </div>
 
           <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-4 pb-6">
-            {items.map((item) => (
-              <a
-                key={item.label}
-                href={item.href}
-                className={`focus-ring rounded-sm px-3 py-2 text-[15px] transition-colors ${
-                  isActive(item.href)
-                    ? "bg-ink-light text-parchment"
-                    : "text-parchment/70 hover:bg-ink-light/60"
-                }`}
-              >
-                {item.label}
-              </a>
-            ))}
+            {items.map((entry) => renderItem(entry))}
           </nav>
 
           <div className="border-t border-parchment/10 px-6 py-5">
@@ -150,7 +245,7 @@ export default function DashboardShell({
             <p className="mt-1 truncate text-sm text-parchment/80">{personName}</p>
             <button
               onClick={async () => {
-                const { signOut } = await import("@/lib/api/auth");
+                const { signOut } = await import("@/lib/auth");
                 await signOut();
                 window.location.href = "/login";
               }}

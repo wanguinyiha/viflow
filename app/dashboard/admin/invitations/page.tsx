@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
@@ -6,92 +6,320 @@ import PageHeader from "@/components/ui/PageHeader";
 import DataTable, { type Column } from "@/components/ui/DataTable";
 import FilterBar from "@/components/ui/FilterBar";
 import { Select } from "@/components/ui/FormField";
+import SlideOver from "@/components/ui/SlideOver";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { supabase } from "@/lib/supabaseClient";
-import type { Profile } from "@/lib/types";
+import { showToast } from "@/components/ui/Toast";
+import { useAuth } from "@/lib/context/AuthContext";
 
 interface InvitationRow {
   id: string;
   visit_code: string;
-  status: string;
-  created_at: string;
-  visitor: { full_name: string; email: string } | null;
-  resident: { full_name: string } | null;
-  room: { room_number: string; block: string } | null;
+  resident_id: string;
+  visitor_id: string | null;
+  visitor_email: string;
+  visitor_name: string;
+  room_id: string;
+  hostel_id: string | null;
   visit_start: string;
   visit_end: string;
+  reason: string | null;
+  vehicle_registration: string | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  profiles?: { id: string; full_name: string; email: string } | null;
 }
 
 export default function AdminInvitationsPage() {
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const { user: profile, loading: authLoading } = useAuth();
   const [invitations, setInvitations] = useState<InvitationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
 
+  const [selectedInvitation, setSelectedInvitation] = useState<InvitationRow | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<InvitationRow | null>(null);
+
   useEffect(() => {
-    async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: prof } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-      setProfile(prof);
+    if (authLoading || !profile) return;
+    loadInvitations();
+  }, [authLoading, profile]);
 
-      const { data } = await supabase
-        .from("invitations")
-        .select("*, visitor:visitor_profiles(full_name, email), resident:profiles!invitations_resident_id_fkey(full_name), room:rooms(room_number, block)")
-        .order("created_at", { ascending: false })
-        .limit(200);
-
-      setInvitations((data ?? []) as InvitationRow[]);
-      setLoading(false);
+  async function loadInvitations() {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/data?type=invitations");
+      const data = await res.json();
+      setInvitations(data.invitations ?? []);
+    } catch {
+      setInvitations([]);
     }
-    load();
-  }, []);
+    setLoading(false);
+  }
 
-  const filtered = invitations.filter((i) => statusFilter ? i.status === statusFilter : true);
+  async function handleCancel(invitation: InvitationRow) {
+    try {
+      const res = await fetch("/api/admin/crud", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "cancel_invitation",
+          invitationId: invitation.id,
+        }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        showToast(data.error, "error");
+        return;
+      }
+      showToast("Invitation cancelled successfully", "success");
+      loadInvitations();
+      setSelectedInvitation(null);
+    } catch {
+      showToast("Failed to cancel invitation", "error");
+    }
+  }
+
+  const filtered = invitations.filter((i) =>
+    statusFilter ? i.status === statusFilter : true
+  );
+
+  function canCancel(status: string) {
+    return status === "pending" || status === "accepted";
+  }
 
   const columns: Column<InvitationRow>[] = [
-    { key: "visit_code", label: "Code", render: (row) => <span className="font-mono text-sm text-ink">{row.visit_code}</span> },
-    { key: "visitor", label: "Visitor", render: (row) => (row.visitor as any)?.full_name ?? "—" },
-    { key: "resident", label: "Resident", render: (row) => (row.resident as any)?.full_name ?? "—" },
-    { key: "room", label: "Room", render: (row) => (row.room as any) ? `${(row.room as any).room_number}, ${(row.room as any).block}` : "—" },
-    { key: "status", label: "Status", render: (row) => <StatusBadge status={row.status} type="visit" /> },
-    { key: "created_at", label: "Created", render: (row) => new Date(row.created_at).toLocaleDateString(), sortable: true },
+    {
+      key: "visit_code",
+      label: "Code",
+      render: (row) => (
+        <span className="font-mono text-sm text-ink">{row.visit_code}</span>
+      ),
+    },
+    {
+      key: "visitor_name",
+      label: "Visitor",
+      render: (row) => row.visitor_name ?? "\u2014",
+    },
+    {
+      key: "resident_id",
+      label: "Resident",
+      render: (row) => row.profiles?.full_name ?? row.resident_id ?? "\u2014",
+    },
+    {
+      key: "reason",
+      label: "Purpose",
+      render: (row) => row.reason ?? "\u2014",
+    },
+    {
+      key: "status",
+      label: "Status",
+      render: (row) => <StatusBadge status={row.status} type="invitation" />,
+    },
+    {
+      key: "visit_start",
+      label: "Valid From",
+      render: (row) =>
+        row.visit_start
+          ? new Date(row.visit_start).toLocaleDateString()
+          : "\u2014",
+    },
+    {
+      key: "visit_end",
+      label: "Valid Until",
+      render: (row) =>
+        row.visit_end
+          ? new Date(row.visit_end).toLocaleDateString()
+          : "\u2014",
+    },
+    {
+      key: "created_at",
+      label: "Created",
+      render: (row) => new Date(row.created_at).toLocaleDateString(),
+      sortable: true,
+    },
   ];
 
-  if (loading || !profile) {
+  if (authLoading || loading || !profile) {
     return (
-      <DashboardShell role="admin" roleLabel="Administrator" personName="Loading…">
-        <div className="h-96 animate-pulse rounded-card border border-ink/10 bg-parchment-dim" />
+      <DashboardShell role="admin" roleLabel="Administrator" personName="Loading\u2026">
+        <div className="space-y-3">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div
+              key={i}
+              className="h-14 animate-pulse rounded-card border border-ink/10 bg-parchment-dim"
+            />
+          ))}
+        </div>
       </DashboardShell>
     );
   }
 
   return (
     <DashboardShell role="admin" roleLabel="Administrator" personName={profile.full_name}>
-      <PageHeader title="Invitations" description="View all invitations across the system." />
+      <PageHeader
+        title="Invitations"
+        description="View and manage all invitations across the system."
+      />
 
       <div className="mt-6">
         <FilterBar
           search={search}
           onSearchChange={setSearch}
-          searchPlaceholder="Search by code, visitor, or resident…"
+          searchPlaceholder="Search by code, visitor, or resident\u2026"
           filters={
-            <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-auto">
+            <Select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-auto"
+            >
               <option value="">All statuses</option>
               <option value="pending">Pending</option>
               <option value="accepted">Accepted</option>
               <option value="expired">Expired</option>
               <option value="cancelled">Cancelled</option>
-              <option value="denied">Denied</option>
             </Select>
           }
         />
       </div>
 
       <div className="mt-6">
-        <DataTable columns={columns} data={filtered} search={search} />
+        <DataTable
+          columns={columns}
+          data={filtered}
+          search={search}
+          onRowClick={(row) => setSelectedInvitation(row)}
+        />
       </div>
+
+      <SlideOver
+        open={!!selectedInvitation}
+        onClose={() => setSelectedInvitation(null)}
+        title="Invitation Details"
+      >
+        {selectedInvitation && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-mono text-sm text-ink/50">
+                  {selectedInvitation.visit_code}
+                </p>
+                <div className="mt-1">
+                  <StatusBadge
+                    status={selectedInvitation.status}
+                    type="invitation"
+                  />
+                </div>
+              </div>
+              {canCancel(selectedInvitation.status) && (
+                <button
+                  onClick={() => {
+                    setSelectedInvitation(null);
+                    setCancelTarget(selectedInvitation);
+                  }}
+                  className="focus-ring rounded-card border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
+                >
+                  Cancel Invitation
+                </button>
+              )}
+            </div>
+
+            <div className="border-t border-ink/10 pt-4">
+              <h3 className="font-display text-lg text-ink">Visitor</h3>
+              <div className="mt-3 grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-ink/50">Name</span>
+                  <p className="font-medium text-ink">
+                    {selectedInvitation.visitor_name ?? "\u2014"}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-ink/50">Email</span>
+                  <p className="font-medium text-ink">
+                    {selectedInvitation.visitor_email ?? "\u2014"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-ink/10 pt-4">
+              <h3 className="font-display text-lg text-ink">Resident</h3>
+              <div className="mt-3 text-sm">
+                <span className="text-ink/50">Name</span>
+                <p className="font-medium text-ink">
+                  {selectedInvitation.profiles?.full_name ?? "\u2014"}
+                </p>
+              </div>
+            </div>
+
+            <div className="border-t border-ink/10 pt-4">
+              <h3 className="font-display text-lg text-ink">Visit Details</h3>
+              <div className="mt-3 grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-ink/50">Valid From</span>
+                  <p className="font-medium text-ink">
+                    {selectedInvitation.visit_start
+                      ? new Date(selectedInvitation.visit_start).toLocaleDateString()
+                      : "\u2014"}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-ink/50">Valid Until</span>
+                  <p className="font-medium text-ink">
+                    {selectedInvitation.visit_end
+                      ? new Date(selectedInvitation.visit_end).toLocaleDateString()
+                      : "\u2014"}
+                  </p>
+                </div>
+                <div className="col-span-2">
+                  <span className="text-ink/50">Reason</span>
+                  <p className="font-medium text-ink">
+                    {selectedInvitation.reason ?? "\u2014"}
+                  </p>
+                </div>
+                {selectedInvitation.vehicle_registration && (
+                  <div className="col-span-2">
+                    <span className="text-ink/50">Vehicle Registration</span>
+                    <p className="font-mono font-medium text-ink">
+                      {selectedInvitation.vehicle_registration}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="border-t border-ink/10 pt-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-ink/50">Created</span>
+                  <p className="font-medium text-ink">
+                    {new Date(selectedInvitation.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-ink/50">Updated</span>
+                  <p className="font-medium text-ink">
+                    {new Date(selectedInvitation.updated_at).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </SlideOver>
+
+      <ConfirmDialog
+        open={!!cancelTarget}
+        onClose={() => setCancelTarget(null)}
+        onConfirm={() => {
+          if (cancelTarget) handleCancel(cancelTarget);
+        }}
+        title="Cancel Invitation"
+        message={`Are you sure you want to cancel invitation ${cancelTarget?.visit_code}? This action cannot be undone.`}
+        confirmLabel="Cancel Invitation"
+        variant="danger"
+      />
     </DashboardShell>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
-import { createContext, useContext, useState, type ReactNode } from "react";
-import { usePathname } from "next/navigation";
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import { supabase } from "@/lib/supabaseClient";
 import type { Profile } from "@/lib/types";
 
 interface AuthContextType {
@@ -9,62 +9,51 @@ interface AuthContextType {
   loading: boolean;
 }
 
-const AuthContext = createContext<AuthContextType>({ user: null, loading: false });
+const AuthContext = createContext<AuthContextType>({ user: null, loading: true });
 
 export function useAuth() {
   return useContext(AuthContext);
 }
 
-// Mock profiles for dashboard preview mode (no auth required)
-const mockProfiles: Record<string, Profile> = {
-  admin: {
-    id: "00000000-0000-0000-0000-000000000001",
-    full_name: "Sarah Mwangi",
-    email: "admin@viflow.com",
-    phone: "+254 700 000001",
-    role: "admin",
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  resident: {
-    id: "00000000-0000-0000-0000-000000000002",
-    full_name: "Tendai Wanjiru",
-    email: "resident@viflow.com",
-    phone: "+254 700 000002",
-    role: "resident",
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  guard: {
-    id: "00000000-0000-0000-0000-000000000003",
-    full_name: "James Otieno",
-    email: "guard@viflow.com",
-    phone: "+254 700 000003",
-    role: "guard",
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-  visitor: {
-    id: "00000000-0000-0000-0000-000000000004",
-    full_name: "Amara Kimani",
-    email: "visitor@viflow.com",
-    phone: "+254 700 000004",
-    role: "visitor",
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-};
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
+  const [user, setUser] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Detect role from URL path: /dashboard/{role}/...
-  const pathParts = pathname.split("/");
-  const roleFromUrl = (pathParts[2] ?? "resident") as string;
-  const user = mockProfiles[roleFromUrl] ?? mockProfiles.resident;
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session?.user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", session.user.id)
+            .single();
+          setUser(profile);
+        } else {
+          setUser(null);
+        }
+        setLoading(false);
+      }
+    );
+
+    // Initial check
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", session.user.id)
+          .single();
+        setUser(profile);
+      }
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading: false }}>
+    <AuthContext.Provider value={{ user, loading }}>
       {children}
     </AuthContext.Provider>
   );

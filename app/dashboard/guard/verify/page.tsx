@@ -4,7 +4,7 @@ import { useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import PageHeader from "@/components/ui/PageHeader";
 import { Input } from "@/components/ui/FormField";
-import { useToast } from "@/components/ui/Toast";
+import { showToast } from "@/components/ui/Toast";
 import { useAuth } from "@/lib/context/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -25,7 +25,6 @@ export default function VerifyVisitorPage() {
   const [result, setResult] = useState<VisitResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [notFound, setNotFound] = useState(false);
-  const { show, ToastComponent } = useToast();
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -73,7 +72,7 @@ export default function VerifyVisitorPage() {
       details: { visit_code: result.visit_code, visitor_name: result.visitor?.full_name },
     });
 
-    show(`Visitor ${action === "check_in" ? "checked in" : action === "check_out" ? "checked out" : "denied"}.`);
+    showToast(`Visitor ${action === "check_in" ? "checked in" : action === "check_out" ? "checked out" : "denied"}.`);
     setResult(null);
     setCode("");
   }
@@ -83,8 +82,7 @@ export default function VerifyVisitorPage() {
 
   return (
     <DashboardShell role="guard" roleLabel="Guard" personName={profile?.full_name ?? "Guard"}>
-      {ToastComponent}
-      <PageHeader title="Verify Visitor" description="Scan a QR code or enter a visit code." />
+          <PageHeader title="Verify Visitor" description="Scan a QR code or enter a visit code." />
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_1.2fr]">
         {/* Search */}

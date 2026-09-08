@@ -8,7 +8,7 @@ import FilterBar from "@/components/ui/FilterBar";
 import { Select } from "@/components/ui/FormField";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { supabase } from "@/lib/supabaseClient";
-import type { Profile } from "@/lib/types";
+import { useAuth } from "@/lib/context/AuthContext";
 
 interface LogEntry {
   id: string;
@@ -18,19 +18,16 @@ interface LogEntry {
 }
 
 export default function VisitLogPage() {
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const { user: profile, loading: authLoading } = useAuth();
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [actionFilter, setActionFilter] = useState("");
 
   useEffect(() => {
-    async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: prof } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-      setProfile(prof);
+    if (authLoading || !profile) return;
 
+    async function load() {
       const { data } = await supabase
         .from("visit_logs")
         .select("*, visit:visits(visit_code, visitor:visitor_profiles(full_name), resident:profiles!visits_resident_id_fkey(full_name), room:rooms(room_number, block))")
@@ -41,7 +38,7 @@ export default function VisitLogPage() {
       setLoading(false);
     }
     load();
-  }, []);
+  }, [authLoading, profile]);
 
   const filtered = logs.filter((l) => {
     if (actionFilter && l.action !== actionFilter) return false;
@@ -56,7 +53,7 @@ export default function VisitLogPage() {
     { key: "action", label: "Action", render: (row) => <StatusBadge status={row.action.replace("checked_", "")} type="visit" /> },
   ];
 
-  if (loading || !profile) {
+  if (authLoading || loading || !profile) {
     return (
       <DashboardShell role="guard" roleLabel="Guard" personName="Loading…">
         <div className="h-96 animate-pulse rounded-card border border-ink/10 bg-parchment-dim" />

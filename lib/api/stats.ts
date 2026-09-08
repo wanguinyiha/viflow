@@ -24,6 +24,7 @@ export async function getAdminStats(): Promise<DashboardStats> {
     flaggedActivity: 0,
     roomsOccupied: 0,
     totalRooms: rooms.count ?? 0,
+    pendingInvitations: 0,
   };
 }
 

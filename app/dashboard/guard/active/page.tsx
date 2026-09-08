@@ -4,23 +4,20 @@ import { useEffect, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
-import { useToast } from "@/components/ui/Toast";
+import { showToast } from "@/components/ui/Toast";
 import { supabase } from "@/lib/supabaseClient";
-import type { Profile, Visit } from "@/lib/types";
+import { useAuth } from "@/lib/context/AuthContext";
+import type { Visit } from "@/lib/types";
 
 export default function ActiveVisitorsPage() {
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const { user: profile, loading: authLoading } = useAuth();
   const [visits, setVisits] = useState<Visit[]>([]);
   const [loading, setLoading] = useState(true);
-  const { show, ToastComponent } = useToast();
 
   useEffect(() => {
-    async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: prof } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-      setProfile(prof);
+    if (authLoading || !profile) return;
 
+    async function load() {
       const { data } = await supabase
         .from("visits")
         .select("*, visitor:visitor_profiles(full_name, photo_url, vehicle_plate), resident:profiles!visits_resident_id_fkey(full_name), room:rooms(room_number, block)")
@@ -31,19 +28,18 @@ export default function ActiveVisitorsPage() {
       setLoading(false);
     }
     load();
-  }, []);
+  }, [authLoading, profile]);
 
   async function handleCheckOut(visitId: string) {
-    const { data: { user } } = await supabase.auth.getUser();
     await supabase.from("visits").update({ status: "checked_out", checked_out_at: new Date().toISOString() }).eq("id", visitId);
-    if (user) {
-      await supabase.from("visit_logs").insert({ visit_id: visitId, action: "checked_out", performed_by: user.id });
+    if (profile?.id) {
+      await supabase.from("visit_logs").insert({ visit_id: visitId, action: "checked_out", performed_by: profile.id });
     }
     setVisits((prev) => prev.filter((v) => v.id !== visitId));
-    show("Visitor checked out.");
+    showToast("Visitor checked out.");
   }
 
-  if (loading || !profile) {
+  if (authLoading || loading || !profile) {
     return (
       <DashboardShell role="guard" roleLabel="Guard" personName="Loading…">
         <div className="h-96 animate-pulse rounded-card border border-ink/10 bg-parchment-dim" />
@@ -53,8 +49,7 @@ export default function ActiveVisitorsPage() {
 
   return (
     <DashboardShell role="guard" roleLabel="Guard" personName={profile.full_name}>
-      {ToastComponent}
-      <PageHeader title="Active Visitors" description="Visitors currently inside the hostel." />
+          <PageHeader title="Active Visitors" description="Visitors currently inside the hostel." />
 
       <div className="mt-8">
         {visits.length === 0 ? (

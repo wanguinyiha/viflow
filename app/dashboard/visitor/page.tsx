@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import { supabase } from "@/lib/supabaseClient";
-import type { Profile, VisitorProfile } from "@/lib/types";
+import { useAuth } from "@/lib/context/AuthContext";
+import type { VisitorProfile } from "@/lib/types";
 
 interface Invitation {
   id: string;
@@ -29,53 +30,45 @@ interface Visit {
 }
 
 export default function VisitorDashboard() {
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const { user: profile, loading: authLoading } = useAuth();
   const [visitorProfile, setVisitorProfile] = useState<VisitorProfile | null>(null);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [visits, setVisits] = useState<Visit[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function load() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
+    if (authLoading || !profile) return;
 
-      const { data: prof } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
-      setProfile(prof);
+    async function load() {
+      if (!profile) return;
 
       const { data: vProf } = await supabase
         .from("visitor_profiles")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", profile.id)
         .single();
       setVisitorProfile(vProf);
 
       const { data: invs } = await supabase
         .from("invitations")
         .select("*, profiles:resident_id(full_name), rooms:rooms!invitations_room_id_fkey(room_number, block)")
-        .eq("visitor_email", user.email ?? "")
+        .eq("visitor_email", profile.email ?? "")
         .order("created_at", { ascending: false });
       setInvitations((invs as unknown as Invitation[]) ?? []);
 
       const { data: vsts } = await supabase
         .from("visits")
         .select("*, profiles:resident_id(full_name), rooms:room_id(room_number, block)")
-        .eq("visitor_id", user.id)
+        .eq("visitor_id", profile.id)
         .order("created_at", { ascending: false });
       setVisits((vsts as unknown as Visit[]) ?? []);
 
       setLoading(false);
     }
     load();
-  }, []);
+  }, [authLoading, profile]);
 
-  if (loading || !profile) {
+  if (authLoading || loading || !profile) {
     return (
       <DashboardShell role="visitor" roleLabel="Visitor" personName="Loading…">
         <p className="font-mono text-[13px] text-brass-dark">Loading…</p>
@@ -128,7 +121,7 @@ export default function VisitorDashboard() {
             </div>
             <div className="flex justify-between pb-1">
               <dt className="text-ink/60">Vehicle</dt>
-              <dd className="text-ink/70">{visitorProfile?.vehicle_plate ?? "None"}</dd>
+              <dd className="text-ink/70">None</dd>
             </div>
           </dl>
           <button className="focus-ring mt-5 rounded-card border border-ink/20 px-4 py-2 text-sm text-ink hover:border-ink/40">

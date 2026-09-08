@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import StatCard from "@/components/ui/StatCard";
 import { supabase } from "@/lib/supabaseClient";
-import type { Profile, GuardStats } from "@/lib/types";
+import { useAuth } from "@/lib/context/AuthContext";
+import type { GuardStats } from "@/lib/types";
 
 interface TodayLog {
   id: string;
@@ -14,18 +15,15 @@ interface TodayLog {
 }
 
 export default function GuardDashboard() {
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const { user: profile, loading: authLoading } = useAuth();
   const [stats, setStats] = useState<GuardStats | null>(null);
   const [log, setLog] = useState<TodayLog[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: prof } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-      setProfile(prof);
+    if (authLoading || !profile) return;
 
+    async function load() {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
@@ -52,9 +50,9 @@ export default function GuardDashboard() {
       setLoading(false);
     }
     load();
-  }, []);
+  }, [authLoading, profile]);
 
-  if (loading || !profile) {
+  if (authLoading || loading || !profile) {
     return (
       <DashboardShell role="guard" roleLabel="Guard" personName="Loading…">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

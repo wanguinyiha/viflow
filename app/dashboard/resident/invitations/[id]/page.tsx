@@ -5,26 +5,23 @@ import { useParams, useRouter } from "next/navigation";
 import DashboardShell from "@/components/DashboardShell";
 import PageHeader from "@/components/ui/PageHeader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { ConfirmDialog } from "@/components/ui/Modal";
-import { useToast } from "@/components/ui/Toast";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { showToast } from "@/components/ui/Toast";
 import { supabase } from "@/lib/supabaseClient";
-import type { Profile, Invitation } from "@/lib/types";
+import { useAuth } from "@/lib/context/AuthContext";
+import type { Invitation } from "@/lib/types";
 
 export default function InvitationDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { show, ToastComponent } = useToast();
-  const [profile, setProfile] = useState<Profile | null>(null);
+ const { user: profile, loading: authLoading } = useAuth();
   const [invitation, setInvitation] = useState<Invitation | null>(null);
   const [loading, setLoading] = useState(true);
   const [showCancel, setShowCancel] = useState(false);
 
   useEffect(() => {
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: prof } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-      setProfile(prof);
+      if (!profile) return;
 
       const { data } = await supabase
         .from("invitations")
@@ -36,16 +33,16 @@ export default function InvitationDetailPage() {
       setLoading(false);
     }
     load();
-  }, [params.id]);
+  }, [params.id, profile]);
 
   async function handleCancel() {
     if (!invitation) return;
     await supabase.from("invitations").update({ status: "cancelled" }).eq("id", invitation.id);
     setInvitation({ ...invitation, status: "cancelled" });
-    show("Invitation cancelled.");
+    showToast("Invitation cancelled.");
   }
 
-  if (loading || !profile || !invitation) {
+  if (authLoading || loading || !profile || !invitation) {
     return (
       <DashboardShell role="resident" roleLabel="Resident" personName="Loading…">
         <div className="h-96 animate-pulse rounded-card border border-ink/10 bg-parchment-dim" />
@@ -55,8 +52,7 @@ export default function InvitationDetailPage() {
 
   return (
     <DashboardShell role="resident" roleLabel="Resident" personName={profile.full_name}>
-      {ToastComponent}
-      <PageHeader
+          <PageHeader
         title="Invitation Details"
         action={
           invitation.status === "pending" && (

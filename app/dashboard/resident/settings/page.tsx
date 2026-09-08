@@ -3,36 +3,29 @@
 import { useEffect, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import PageHeader from "@/components/ui/PageHeader";
-import { useToast } from "@/components/ui/Toast";
+import { showToast } from "@/components/ui/Toast";
 import { supabase } from "@/lib/supabaseClient";
-import type { Profile } from "@/lib/types";
+import { useAuth } from "@/lib/context/AuthContext";
 
 export default function ResidentSettingsPage() {
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const { user: profile, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
-  const { show, ToastComponent } = useToast();
 
   useEffect(() => {
-    async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: prof } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-      setProfile(prof);
+    if (profile) {
       setLoading(false);
     }
-    load();
-  }, []);
+  }, [profile]);
 
   async function handlePasswordChange() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user?.email) return;
-    const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+    if (!profile?.email) return;
+    const { error } = await supabase.auth.resetPasswordForEmail(profile.email, {
       redirectTo: `${window.location.origin}/reset-password`,
     });
-    if (!error) show("Password reset email sent.");
+    if (!error) showToast("Password reset email sent.");
   }
 
-  if (loading || !profile) {
+  if (authLoading || loading || !profile) {
     return (
       <DashboardShell role="resident" roleLabel="Resident" personName="Loading…">
         <div className="h-96 animate-pulse rounded-card border border-ink/10 bg-parchment-dim" />
@@ -42,8 +35,7 @@ export default function ResidentSettingsPage() {
 
   return (
     <DashboardShell role="resident" roleLabel="Resident" personName={profile.full_name}>
-      {ToastComponent}
-      <PageHeader title="Settings" description="Manage your account settings." />
+          <PageHeader title="Settings" description="Manage your account settings." />
 
       <div className="mt-8 max-w-lg space-y-8">
         <div>

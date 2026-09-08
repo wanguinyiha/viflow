@@ -16,6 +16,18 @@ export interface Profile {
   updated_at: string;
 }
 
+export interface ResidentProfile {
+  id: string;
+  user_id: string;
+  room_id: string;
+  student_number: string | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  profile?: Profile;
+  room?: Room;
+}
+
 export interface VisitorProfile {
   id: string;
   user_id: string;
@@ -27,7 +39,6 @@ export interface VisitorProfile {
   id_verified: boolean;
   photo_url: string | null;
   photo_verified: boolean;
-  vehicle_plate: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -42,6 +53,7 @@ export interface Vehicle {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  visitor?: VisitorProfile;
 }
 
 export interface Room {
@@ -49,19 +61,8 @@ export interface Room {
   room_number: string;
   block: string;
   floor: number;
-  resident_id: string | null;
-  hostel_id: string | null;
   is_occupied: boolean;
   created_at: string;
-}
-
-export interface Hostel {
-  id: string;
-  name: string;
-  address: string | null;
-  total_rooms: number;
-  created_at: string;
-  updated_at: string;
 }
 
 export interface Invitation {
@@ -71,7 +72,6 @@ export interface Invitation {
   visitor_id: string | null;
   visitor_email: string;
   visitor_name: string | null;
-  hostel_id: string | null;
   room_id: string;
   visit_start: string;
   visit_end: string;
@@ -83,12 +83,12 @@ export interface Invitation {
   resident?: Profile;
   visitor?: VisitorProfile;
   room?: Room;
-  hostel?: Hostel;
 }
 
 export interface Visit {
   id: string;
   invitation_id: string;
+  visit_code: string;
   visitor_id: string;
   resident_id: string;
   room_id: string;
@@ -149,6 +149,28 @@ export interface AuditLog {
   user?: Profile;
 }
 
+export interface ActivityReview {
+  id: string;
+  visit_id: string;
+  reviewed_by: string;
+  action: string;
+  reason: string;
+  notes: string | null;
+  created_at: string;
+  visit?: Visit;
+  reviewer?: Profile;
+}
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  title: string;
+  message: string;
+  type: string;
+  read: boolean;
+  created_at: string;
+}
+
 export interface Policy {
   id: string;
   key: string;
@@ -166,7 +188,24 @@ export interface DashboardStats {
   flaggedActivity: number;
   roomsOccupied: number;
   totalRooms: number;
+  pendingInvitations: number;
 }
+
+export type JoinedInvitation = Invitation & { resident: Profile | null };
+
+export type JoinedVisit = Visit & { invitation: Invitation | null; room: Room | null };
+
+export type JoinedRoom = Room & { resident_profile: ResidentProfile & { profile: Profile } | null };
+
+export type JoinedResident = ResidentProfile & { profile: Profile | null; room: Room | null };
+
+export type JoinedAuditLog = AuditLog & { user: Profile | null };
+
+export type JoinedVisitLog = VisitLog & { visit: Visit | null };
+
+export type JoinedVerification = Verification & { visit: Visit | null; visitor: VisitorProfile | null };
+
+export type JoinedVehicle = Vehicle & { visitor: VisitorProfile | null };
 
 export interface ResidentStats {
   activeVisitors: number;

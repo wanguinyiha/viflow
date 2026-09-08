@@ -5,7 +5,8 @@ import DashboardShell from "@/components/DashboardShell";
 import StatCard from "@/components/ui/StatCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { supabase } from "@/lib/supabaseClient";
-import type { Profile, ResidentStats } from "@/lib/types";
+import { useAuth } from "@/lib/context/AuthContext";
+import type { ResidentStats } from "@/lib/types";
 
 interface RecentVisit {
   id: string;
@@ -16,23 +17,19 @@ interface RecentVisit {
 }
 
 export default function ResidentDashboard() {
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const { user: profile, loading: authLoading } = useAuth();
   const [stats, setStats] = useState<ResidentStats | null>(null);
   const [recentVisits, setRecentVisits] = useState<RecentVisit[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: prof } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-      setProfile(prof);
+      if (!profile) return;
 
       const [active, pending, recent] = await Promise.all([
-        supabase.from("visits").select("*", { count: "exact", head: true }).eq("resident_id", user.id).in("status", ["authorized", "checked_in"]),
-        supabase.from("invitations").select("*", { count: "exact", head: true }).eq("resident_id", user.id).eq("status", "pending"),
-        supabase.from("visits").select("*, visitor:visitor_profiles(full_name), room:rooms(room_number, block)").eq("resident_id", user.id).order("created_at", { ascending: false }).limit(5),
+        supabase.from("visits").select("*", { count: "exact", head: true }).eq("resident_id", profile.id).in("status", ["authorized", "checked_in"]),
+        supabase.from("invitations").select("*", { count: "exact", head: true }).eq("resident_id", profile.id).eq("status", "pending"),
+        supabase.from("visits").select("*, visitor:visitor_profiles(full_name), room:rooms(room_number, block)").eq("resident_id", profile.id).order("created_at", { ascending: false }).limit(5),
       ]);
 
       setStats({
@@ -47,9 +44,9 @@ export default function ResidentDashboard() {
       setLoading(false);
     }
     load();
-  }, []);
+  }, [profile]);
 
-  if (loading || !profile) {
+  if (authLoading || loading || !profile) {
     return (
       <DashboardShell role="resident" roleLabel="Resident" personName="Loading…">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

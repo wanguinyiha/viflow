@@ -1,50 +1,54 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 
-export default function Toast({
-  message,
-  type = "success",
-  onClose,
-  duration = 4000,
-}: {
+export interface ToastItem {
+  id: string;
   message: string;
-  type?: "success" | "error" | "warning" | "info";
-  onClose: () => void;
-  duration?: number;
-}) {
-  useEffect(() => {
-    const timer = setTimeout(onClose, duration);
-    return () => clearTimeout(timer);
-  }, [onClose, duration]);
-
-  const styles = {
-    success: "border-sage bg-sage/10 text-sage-dim",
-    error: "border-red-300 bg-red-50 text-red-700",
-    warning: "border-brass bg-brass/10 text-brass-dark",
-    info: "border-blue-200 bg-blue-50 text-blue-700",
-  };
-
-  return (
-    <div className={`fixed bottom-4 right-4 z-50 flex items-center gap-3 rounded-card border px-4 py-3 text-sm shadow-lg ${styles[type]}`}>
-      <span>{message}</span>
-      <button onClick={onClose} className="ml-2 text-current opacity-60 hover:opacity-100" aria-label="Dismiss">
-        &times;
-      </button>
-    </div>
-  );
+  type: "success" | "error" | "info";
 }
 
-export function useToast() {
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "warning" | "info" } | null>(null);
+let toastListeners: ((toasts: ToastItem[]) => void)[] = [];
+let toastState: ToastItem[] = [];
 
-  const show = (message: string, type: "success" | "error" | "warning" | "info" = "success") => {
-    setToast({ message, type });
-  };
+function notifyListeners() {
+  toastListeners.forEach((fn) => fn([...toastState]));
+}
 
-  const ToastComponent = toast ? (
-    <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
-  ) : null;
+export function showToast(message: string, type: ToastItem["type"] = "info") {
+  const id = Math.random().toString(36).slice(2);
+  toastState = [...toastState, { id, message, type }];
+  notifyListeners();
+  setTimeout(() => {
+    toastState = toastState.filter((t) => t.id !== id);
+    notifyListeners();
+  }, 3000);
+}
 
-  return { show, ToastComponent };
+export default function ToastContainer() {
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+
+  useEffect(() => {
+    toastListeners.push(setToasts);
+    return () => { toastListeners = toastListeners.filter((fn) => fn !== setToasts); };
+  }, []);
+
+  if (toasts.length === 0) return null;
+
+  return (
+    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+      {toasts.map((t) => (
+        <div
+          key={t.id}
+          className={`rounded-card border px-4 py-3 text-sm font-medium shadow-lg ${
+            t.type === "success" ? "border-sage/30 bg-sage/10 text-ink" :
+            t.type === "error" ? "border-red-200 bg-red-50 text-red-800" :
+            "border-ink/15 bg-parchment text-ink"
+          }`}
+        >
+          {t.message}
+        </div>
+      ))}
+    </div>
+  );
 }

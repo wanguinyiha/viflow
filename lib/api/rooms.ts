@@ -4,34 +4,34 @@ import type { Room } from "../types";
 export async function getRoom(id: string) {
   const { data, error } = await supabase
     .from("rooms")
-    .select("*, resident:profiles!rooms_resident_id_fkey(full_name, email)")
+    .select("*, resident:resident_profiles!resident_profiles_room_id_fkey(id, user_id, profile:profiles!resident_profiles_user_id_fkey(full_name, email))")
     .eq("id", id)
     .single();
   return { data, error };
 }
 
-export async function getResidentRoom(residentId: string) {
+export async function getResidentRoom(userId: string) {
   const { data, error } = await supabase
-    .from("rooms")
-    .select("*")
-    .eq("resident_id", residentId)
+    .from("resident_profiles")
+    .select("*, room:rooms(*)")
+    .eq("user_id", userId)
     .single();
-  return { data: data as Room | null, error };
+  return { data, error };
 }
 
 export async function getAllRooms() {
   const { data, error } = await supabase
     .from("rooms")
-    .select("*, resident:profiles!rooms_resident_id_fkey(full_name, email)")
+    .select("*, resident:resident_profiles!resident_profiles_room_id_fkey(id, user_id, profile:profiles!resident_profiles_user_id_fkey(full_name, email))")
     .order("block")
     .order("room_number");
   return { data: (data ?? []) as Room[], error };
 }
 
-export async function createRoom(room: { room_number: string; block: string; resident_id?: string }) {
+export async function createRoom(room: { room_number: string; block: string; floor?: number }) {
   const { data, error } = await supabase
     .from("rooms")
-    .insert(room)
+    .insert({ ...room, is_occupied: false })
     .select()
     .single();
   return { data: data as Room | null, error };
@@ -45,12 +45,4 @@ export async function updateRoom(id: string, updates: Partial<Room>) {
     .select()
     .single();
   return { data: data as Room | null, error };
-}
-
-export async function assignResident(roomId: string, residentId: string) {
-  return updateRoom(roomId, { resident_id: residentId, is_occupied: true });
-}
-
-export async function removeResident(roomId: string) {
-  return updateRoom(roomId, { resident_id: null, is_occupied: false });
 }

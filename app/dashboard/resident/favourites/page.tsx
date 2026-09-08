@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
-import { useToast } from "@/components/ui/Toast";
-import { ConfirmDialog } from "@/components/ui/Modal";
+import { showToast } from "@/components/ui/Toast";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { useAuth } from "@/lib/context/AuthContext";
 import { getFavouriteVisitors, removeFavourite } from "@/lib/api/favourites";
 import type { FavouriteVisitor } from "@/lib/types";
@@ -14,8 +14,7 @@ export default function FavouritesPage() {
   const { user: profile } = useAuth();
   const [favourites, setFavourites] = useState<FavouriteVisitor[]>([]);
   const [loading, setLoading] = useState(true);
-  const { show, ToastComponent } = useToast();
-  const [removeId, setRemoveId] = useState<string | null>(null);
+ const [removeId, setRemoveId] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -32,7 +31,7 @@ export default function FavouritesPage() {
     const { error } = await removeFavourite(removeId);
     if (!error) {
       setFavourites((prev) => prev.filter((f) => f.id !== removeId));
-      show("Removed from favourites.");
+      showToast("Removed from favourites.");
     }
     setRemoveId(null);
   }
@@ -47,8 +46,7 @@ export default function FavouritesPage() {
 
   return (
     <DashboardShell role="resident" roleLabel="Resident" personName={profile.full_name}>
-      {ToastComponent}
-      <PageHeader title="Favourite Visitors" description="Quick access to your frequent visitors." />
+          <PageHeader title="Favourite Visitors" description="Quick access to your frequent visitors." />
 
       <div className="mt-8">
         {favourites.length === 0 ? (
