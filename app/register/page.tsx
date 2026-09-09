@@ -219,7 +219,6 @@ function RegisterContent() {
         email,
         phone: data.phone || null,
         id_number: data.idNumber || null,
-        vehicle_plate: data.vehiclePlate || null,
       };
 
       // Upload photo if provided
@@ -247,6 +246,23 @@ function RegisterContent() {
         console.error("Profile error:", profileError);
       }
 
+      // Add vehicle if provided
+      if (data.vehiclePlate && userId) {
+        // First get the visitor profile ID
+        const { data: vp } = await supabase
+          .from("visitor_profiles")
+          .select("id")
+          .eq("user_id", userId)
+          .single();
+
+        if (vp) {
+          await supabase.from("vehicles").upsert({
+            visitor_id: vp.id,
+            registration_number: data.vehiclePlate as string,
+          }, { onConflict: "registration_number" });
+        }
+      }
+
       // Update invitation if exists
       if (invitationId) {
         const { data: invitation } = await supabase
@@ -269,8 +285,11 @@ function RegisterContent() {
           // Create visit record
           const room = invitation.room as { id: string } | null;
           if (room) {
+            // Generate a visit code
+            const visitCode = 'VF-' + Math.random().toString(36).substring(2, 6).toUpperCase();
             await supabase.from("visits").insert({
               invitation_id: invitationId,
+              visit_code: visitCode,
               visitor_id: userId,
               resident_id: invitation.resident_id,
               room_id: room.id,

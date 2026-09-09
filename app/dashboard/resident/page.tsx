@@ -16,15 +16,31 @@ interface RecentVisit {
   room: { room_number: string; block: string } | null;
 }
 
+interface RoomAssignment {
+  room: { room_number: string; block: string; floor: number } | null;
+}
+
 export default function ResidentDashboard() {
   const { user: profile, loading: authLoading } = useAuth();
   const [stats, setStats] = useState<ResidentStats | null>(null);
   const [recentVisits, setRecentVisits] = useState<RecentVisit[]>([]);
+  const [roomAssignment, setRoomAssignment] = useState<RoomAssignment | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
       if (!profile) return;
+
+      // Fetch room assignment from resident_profiles
+      const { data: residentProfile } = await supabase
+        .from("resident_profiles")
+        .select("room:rooms(room_number, block, floor)")
+        .eq("user_id", profile.id)
+        .single();
+
+      if (residentProfile) {
+        setRoomAssignment(residentProfile as RoomAssignment);
+      }
 
       const [active, pending, recent] = await Promise.all([
         supabase.from("visits").select("*", { count: "exact", head: true }).eq("resident_id", profile.id).in("status", ["authorized", "checked_in"]),
@@ -61,6 +77,21 @@ export default function ResidentDashboard() {
   return (
     <DashboardShell role="resident" roleLabel="Resident" personName={profile.full_name}>
       <h1 className="font-display text-3xl italic text-ink">Welcome, {profile.full_name.split(" ")[0]}.</h1>
+
+      {roomAssignment?.room && (
+        <div className="mt-4 rounded-card border border-sage/30 bg-sage/5 p-4">
+          <p className="text-sm text-ink/60">Your Room</p>
+          <p className="font-display text-xl text-ink">
+            Block {roomAssignment.room.block} — Room {roomAssignment.room.room_number}
+          </p>
+        </div>
+      )}
+
+      {!roomAssignment?.room && (
+        <div className="mt-4 rounded-card border border-brass/30 bg-brass/5 p-4">
+          <p className="text-sm text-ink/60">No room assigned yet. Contact an administrator.</p>
+        </div>
+      )}
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard

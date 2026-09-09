@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import type { Profile } from "@/lib/types";
+import type { Session } from "@supabase/supabase-js";
 
 interface AuthContextType {
   user: Profile | null;
@@ -21,7 +22,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (_event: string, session: Session | null) => {
         if (session?.user) {
           const { data: profile } = await supabase
             .from("profiles")
@@ -36,8 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    // Initial check
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }: { data: { session: Session | null } }) => {
       if (session?.user) {
         const { data: profile } = await supabase
           .from("profiles")

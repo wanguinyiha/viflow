@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import DashboardShell from "@/components/DashboardShell";
 import PageHeader from "@/components/ui/PageHeader";
-import FormField, { Input, Select, Textarea } from "@/components/ui/FormField";
+import FormField, { Input, Textarea } from "@/components/ui/FormField";
 import { useAuth } from "@/lib/context/AuthContext";
 import { createInvitation, getActiveVisitCount } from "@/lib/api/invitations";
 import { supabase } from "@/lib/supabaseClient";
@@ -24,10 +24,22 @@ function CreateInvitationContent() {
   const [endDate, setEndDate] = useState("");
   const [reason, setReason] = useState("");
   const [vehiclePlate, setVehiclePlate] = useState("");
+  const [residentRoomId, setResidentRoomId] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
       if (!profile) return;
+
+      // Get resident's room from resident_profiles
+      const { data: residentProfile } = await supabase
+        .from("resident_profiles")
+        .select("room_id")
+        .eq("user_id", profile.id)
+        .single();
+
+      if (residentProfile) {
+        setResidentRoomId(residentProfile.room_id);
+      }
 
       // Check active visit count
       const count = await getActiveVisitCount(profile.id);
@@ -37,14 +49,13 @@ function CreateInvitationContent() {
       if (prefillVisitorId) {
         const { data: visitor } = await supabase
           .from("visitor_profiles")
-          .select("email, full_name, vehicle_plate")
-          .eq("user_id", prefillVisitorId)
+          .select("email, full_name")
+          .eq("id", prefillVisitorId)
           .single();
 
         if (visitor) {
           setEmail(visitor.email);
           setVisitorName(visitor.full_name);
-          setVehiclePlate(visitor.vehicle_plate ?? "");
         }
       }
 
@@ -67,10 +78,7 @@ function CreateInvitationContent() {
       return;
     }
 
-    // Get resident's room
-    const { data: room } = await supabase.from("rooms").select("id").eq("resident_id", profile.id).single();
-
-    if (!room) {
+    if (!residentRoomId) {
       setError("You need a room assigned to create invitations. Contact an administrator.");
       setSending(false);
       return;
@@ -81,10 +89,10 @@ function CreateInvitationContent() {
     if (!visitorId && email) {
       const { data: existingVisitor } = await supabase
         .from("visitor_profiles")
-        .select("user_id")
+        .select("id")
         .eq("email", email)
         .single();
-      visitorId = existingVisitor?.user_id;
+      visitorId = existingVisitor?.id;
     }
 
     const { data: invitation, error: insertError } = await createInvitation({
@@ -92,7 +100,7 @@ function CreateInvitationContent() {
       visitor_email: email,
       visitor_name: visitorName || undefined,
       visitor_id: visitorId || undefined,
-      room_id: room.id,
+      room_id: residentRoomId,
       visit_start: startDate,
       visit_end: endDate,
       reason: reason || undefined,
@@ -138,6 +146,12 @@ function CreateInvitationContent() {
           </div>
         )}
 
+        {!residentRoomId && (
+          <div className="mb-6 rounded-sm border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
+            You do not have a room assigned. Contact an administrator to assign a room before creating invitations.
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-5">
           {error && (
             <div className="rounded-sm border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>
@@ -171,7 +185,7 @@ function CreateInvitationContent() {
           </FormField>
 
           <div className="flex gap-3 pt-2">
-            <button type="submit" disabled={sending || atLimit} className="focus-ring rounded-card bg-ink px-5 py-2.5 text-sm font-medium text-parchment hover:bg-ink-light disabled:opacity-60">
+            <button type="submit" disabled={sending || atLimit || !residentRoomId} className="focus-ring rounded-card bg-ink px-5 py-2.5 text-sm font-medium text-parchment hover:bg-ink-light disabled:opacity-60">
               {sending ? "Sending…" : "Send Invitation"}
             </button>
             <a href="/dashboard/resident" className="focus-ring rounded-card border border-ink/20 px-5 py-2.5 text-sm text-ink hover:border-ink/40">

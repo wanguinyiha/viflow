@@ -4,7 +4,7 @@ import type { Invitation, InvitationStatus } from "../types";
 export async function getInvitation(id: string) {
   const { data, error } = await supabase
     .from("invitations")
-    .select("*, resident:profiles!invitations_resident_id_fkey(*), room:rooms(*), visitor:visitor_profiles(*), hostel:hostels(*)")
+    .select("*, resident:profiles!invitations_resident_id_fkey(*), room:rooms(*), visitor:visitor_profiles(*)")
     .eq("id", id)
     .single();
   return { data: data as Invitation | null, error };
@@ -13,7 +13,7 @@ export async function getInvitation(id: string) {
 export async function getInvitationByCode(visitCode: string) {
   const { data, error } = await supabase
     .from("invitations")
-    .select("*, resident:profiles!invitations_resident_id_fkey(*), room:rooms(*), visitor:visitor_profiles(*), hostel:hostels(*)")
+    .select("*, resident:profiles!invitations_resident_id_fkey(*), room:rooms(*), visitor:visitor_profiles(*)")
     .eq("visit_code", visitCode)
     .single();
   return { data: data as Invitation | null, error };
@@ -22,7 +22,7 @@ export async function getInvitationByCode(visitCode: string) {
 export async function getResidentInvitations(residentId: string) {
   const { data, error } = await supabase
     .from("invitations")
-    .select("*, visitor:visitor_profiles(*), room:rooms(*), hostel:hostels(*)")
+    .select("*, visitor:visitor_profiles(*), room:rooms(*)")
     .eq("resident_id", residentId)
     .order("created_at", { ascending: false });
   return { data: (data ?? []) as Invitation[], error };
@@ -31,7 +31,7 @@ export async function getResidentInvitations(residentId: string) {
 export async function getVisitorInvitations(visitorEmail: string) {
   const { data, error } = await supabase
     .from("invitations")
-    .select("*, resident:profiles!invitations_resident_id_fkey(*), room:rooms(*), hostel:hostels(*)")
+    .select("*, resident:profiles!invitations_resident_id_fkey(*), room:rooms(*)")
     .eq("visitor_email", visitorEmail)
     .order("created_at", { ascending: false });
   return { data: (data ?? []) as Invitation[], error };
@@ -43,7 +43,6 @@ export async function createInvitation(invitation: {
   visitor_name?: string;
   visitor_id?: string;
   room_id: string;
-  hostel_id?: string;
   visit_start: string;
   visit_end: string;
   reason?: string;

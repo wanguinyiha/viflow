@@ -4,7 +4,7 @@ import type { FavouriteVisitor } from "../types";
 export async function getFavouriteVisitors(residentId: string) {
   const { data, error } = await supabase
     .from("favourite_visitors")
-    .select("*, visitor:profiles!favourite_visitors_visitor_id_fkey(id, full_name, email, phone, photo_url:visitor_profiles(photo_url))")
+    .select("*, visitor:visitor_profiles!favourite_visitors_visitor_id_fkey(id, full_name, email, phone, photo_url)")
     .eq("resident_id", residentId)
     .order("created_at", { ascending: false });
   return { data: (data ?? []) as FavouriteVisitor[], error };

@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import Modal from "@/components/ui/Modal";
 import SlideOver from "@/components/ui/SlideOver";
@@ -32,37 +32,54 @@ export default function ResidentsPage() {
   const [selectedRoomId, setSelectedRoomId] = useState("");
   const [assigning, setAssigning] = useState(false);
 
+  // Change room modal
+  const [showChangeRoom, setShowChangeRoom] = useState(false);
+  const [changeTarget, setChangeTarget] = useState<ResidentRow | null>(null);
+  const [newRoomId, setNewRoomId] = useState("");
+  const [changing, setChanging] = useState(false);
+
   // View slide-over
   const [selectedResident, setSelectedResident] = useState<ResidentRow | null>(null);
+
+  const loadResidents = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/data?type=residents");
+      const data = await res.json();
+      setResidents(data.residents ?? []);
+    } catch {
+      setResidents([]);
+    }
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
     if (authLoading || !profile) return;
     loadResidents();
-  }, [authLoading, profile]);
-
-  async function loadResidents() {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/admin/data?type=resident_profiles");
-      const data = await res.json();
-      setResidents(data.resident_profiles ?? []);
-    } catch { setResidents([]); }
-    setLoading(false);
-  }
+  }, [authLoading, profile, loadResidents]);
 
   async function loadAvailableRooms() {
     try {
       const res = await fetch("/api/admin/data?type=rooms");
       const data = await res.json();
-      const unoccupied = (data.rooms ?? []).filter((r: Room) => !r.is_occupied);
+      const unoccupied = (data.rooms ?? []).filter((r: any) => !r.is_occupied);
       setAvailableRooms(unoccupied);
-    } catch { setAvailableRooms([]); }
+    } catch {
+      setAvailableRooms([]);
+    }
   }
 
   function openAssignRoom(resident: ResidentRow) {
     setAssignTarget(resident);
     setSelectedRoomId("");
     setShowAssign(true);
+    loadAvailableRooms();
+  }
+
+  function openChangeRoom(resident: ResidentRow) {
+    setChangeTarget(resident);
+    setNewRoomId("");
+    setShowChangeRoom(true);
     loadAvailableRooms();
   }
 
@@ -76,14 +93,44 @@ export default function ResidentsPage() {
         body: JSON.stringify({ action: "assign_room", roomId: selectedRoomId, userId: assignTarget.user_id }),
       });
       const data = await res.json();
-      if (data.error) { showToast(data.error, "error"); return; }
+      if (data.error) {
+        showToast(data.error, "error");
+        return;
+      }
       showToast("Room assigned successfully", "success");
       setShowAssign(false);
       setAssignTarget(null);
       setSelectedRoomId("");
       loadResidents();
-    } catch { showToast("Failed to assign room", "error"); }
+    } catch {
+      showToast("Failed to assign room", "error");
+    }
     setAssigning(false);
+  }
+
+  async function handleChangeRoom() {
+    if (!newRoomId || !changeTarget) return;
+    setChanging(true);
+    try {
+      const res = await fetch("/api/admin/crud", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "change_room", residentProfileId: changeTarget.id, newRoomId }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        showToast(data.error, "error");
+        return;
+      }
+      showToast("Room changed successfully", "success");
+      setShowChangeRoom(false);
+      setChangeTarget(null);
+      setNewRoomId("");
+      loadResidents();
+    } catch {
+      showToast("Failed to change room", "error");
+    }
+    setChanging(false);
   }
 
   async function handleUnassignRoom(resident: ResidentRow) {
@@ -95,11 +142,16 @@ export default function ResidentsPage() {
         body: JSON.stringify({ action: "unassign_room", residentProfileId: resident.id }),
       });
       const data = await res.json();
-      if (data.error) { showToast(data.error, "error"); return; }
+      if (data.error) {
+        showToast(data.error, "error");
+        return;
+      }
       showToast("Room unassigned", "success");
       setSelectedResident(null);
       loadResidents();
-    } catch { showToast("Failed to unassign", "error"); }
+    } catch {
+      showToast("Failed to unassign", "error");
+    }
   }
 
   const filtered = residents.filter((r) => {
@@ -168,7 +220,7 @@ export default function ResidentsPage() {
                 <td className="px-4 py-3">
                   {r.room ? (
                     <span className="inline-block rounded-full bg-sage/20 px-2 py-0.5 text-xs font-medium text-ink">
-                      Block {r.room.block} - Room {r.room.room_number}
+                      Block {r.room.block} — Room {r.room.room_number}
                     </span>
                   ) : (
                     <span className="text-ink/40 text-xs">Unassigned</span>
@@ -184,6 +236,9 @@ export default function ResidentsPage() {
                   <button onClick={() => setSelectedResident(r)} className="text-xs text-ink/50 hover:text-ink">View</button>
                   {!r.room && (
                     <button onClick={() => openAssignRoom(r)} className="text-xs text-brass hover:text-brass-light">Assign Room</button>
+                  )}
+                  {r.room && (
+                    <button onClick={() => openChangeRoom(r)} className="text-xs text-ink/50 hover:text-ink">Change Room</button>
                   )}
                 </td>
               </tr>
@@ -234,10 +289,13 @@ export default function ResidentsPage() {
                 <div className="mt-3 rounded-card border border-ink/10 bg-parchment-dim/50 p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium text-ink">Block {selectedResident.room.block} - Room {selectedResident.room.room_number}</p>
+                      <p className="font-medium text-ink">Block {selectedResident.room.block} — Room {selectedResident.room.room_number}</p>
                       <p className="text-sm text-ink/50">Floor {selectedResident.room.floor}</p>
                     </div>
-                    <button onClick={() => handleUnassignRoom(selectedResident)} className="text-xs text-red-500 hover:text-red-700">Unassign</button>
+                    <div className="space-x-2">
+                      <button onClick={() => { setSelectedResident(null); openChangeRoom(selectedResident); }} className="text-xs text-ink/50 hover:text-ink">Change</button>
+                      <button onClick={() => handleUnassignRoom(selectedResident)} className="text-xs text-red-500 hover:text-red-700">Unassign</button>
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -257,8 +315,14 @@ export default function ResidentsPage() {
             <select value={selectedRoomId} onChange={(e) => setSelectedRoomId(e.target.value)}
               className="focus-ring w-full rounded-card border border-ink/15 bg-parchment px-3 py-2 text-sm">
               <option value="">Select a room…</option>
-              {availableRooms.map((room) => (
-                <option key={room.id} value={room.id}>Block {room.block} - Room {room.room_number} (Floor {room.floor})</option>
+              {["A", "B"].map((block) => (
+                <optgroup key={block} label={`Block ${block}`}>
+                  {availableRooms
+                    .filter((r) => r.block === block)
+                    .map((room) => (
+                      <option key={room.id} value={room.id}>Block {room.block} — Room {room.room_number}</option>
+                    ))}
+                </optgroup>
               ))}
             </select>
           </div>
@@ -269,6 +333,41 @@ export default function ResidentsPage() {
             <button onClick={handleAssignRoom} disabled={!selectedRoomId || assigning}
               className="focus-ring rounded-card bg-ink px-4 py-2 text-sm font-medium text-parchment hover:bg-ink-light disabled:opacity-50">
               {assigning ? "Assigning…" : "Assign Room"}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Change Room Modal */}
+      <Modal open={showChangeRoom} onClose={() => { setShowChangeRoom(false); setChangeTarget(null); setNewRoomId(""); }} title="Change Room">
+        <div className="space-y-4">
+          <p className="text-sm text-ink/60">
+            Change room for {changeTarget?.profile?.full_name}.
+            {changeTarget?.room && ` Currently in Block ${changeTarget.room.block} — Room ${changeTarget.room.room_number}.`}
+          </p>
+          <div>
+            <label className="block text-sm font-medium text-ink mb-1">New Room</label>
+            <select value={newRoomId} onChange={(e) => setNewRoomId(e.target.value)}
+              className="focus-ring w-full rounded-card border border-ink/15 bg-parchment px-3 py-2 text-sm">
+              <option value="">Select a room…</option>
+              {["A", "B"].map((block) => (
+                <optgroup key={block} label={`Block ${block}`}>
+                  {availableRooms
+                    .filter((r) => r.block === block)
+                    .map((room) => (
+                      <option key={room.id} value={room.id}>Block {room.block} — Room {room.room_number}</option>
+                    ))}
+                </optgroup>
+              ))}
+            </select>
+          </div>
+          {availableRooms.length === 0 && <p className="text-sm text-ink/40">No unoccupied rooms available.</p>}
+          <div className="flex justify-end gap-3 pt-2">
+            <button type="button" onClick={() => { setShowChangeRoom(false); setChangeTarget(null); setNewRoomId(""); }}
+              className="focus-ring rounded-card border border-ink/15 px-4 py-2 text-sm font-medium text-ink hover:bg-ink/5">Cancel</button>
+            <button onClick={handleChangeRoom} disabled={!newRoomId || changing}
+              className="focus-ring rounded-card bg-ink px-4 py-2 text-sm font-medium text-parchment hover:bg-ink-light disabled:opacity-50">
+              {changing ? "Changing…" : "Change Room"}
             </button>
           </div>
         </div>

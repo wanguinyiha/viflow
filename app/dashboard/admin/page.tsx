@@ -90,12 +90,11 @@ export default function AdminDashboard() {
         <StatCard label="Today's Visits" value={s.todaysVisits} />
       </div>
 
-      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Total Rooms" value={s.totalRooms} />
         <StatCard label="Rooms Occupied" value={s.roomsOccupied} />
         <StatCard label="Pending Invitations" value={s.pendingInvitations} />
         <StatCard label="Pending Verifications" value={s.pendingVerifications} />
-        <StatCard label="Hostels" value={1} />
       </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">

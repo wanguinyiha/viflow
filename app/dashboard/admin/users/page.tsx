@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import { useAuth } from "@/lib/context/AuthContext";
 import Modal from "@/components/ui/Modal";
 import SlideOver from "@/components/ui/SlideOver";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { showToast } from "@/components/ui/Toast";
+import type { Room } from "@/lib/types";
 
 interface UserRow {
   id: string;
@@ -21,7 +22,17 @@ interface UserRow {
   vehicle_plate?: string | null;
 }
 
-const ROLE_TABS = ["all", "resident", "visitor", "guard"] as const;
+interface ResidentRow {
+  id: string;
+  user_id: string;
+  student_number: string | null;
+  status: string;
+  created_at: string;
+  profile: { id: string; full_name: string; email: string; phone: string | null } | null;
+  room: { id: string; room_number: string; block: string; floor: number } | null;
+}
+
+const ROLE_TABS = ["all", "resident", "visitor", "guard", "admin"] as const;
 const ROLE_COLORS: Record<string, string> = {
   admin: "bg-brass/20 text-ink",
   guard: "bg-sage/20 text-ink",
@@ -38,57 +49,118 @@ export default function UsersPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserRow | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null);
-  const [form, setForm] = useState({ email: "", password: "", fullName: "", phone: "", role: "resident" });
+  const [form, setForm] = useState({
+    email: "", password: "", fullName: "", phone: "", role: "resident",
+    roomId: "", studentNumber: "",
+  });
   const [creating, setCreating] = useState(false);
+  const [availableRooms, setAvailableRooms] = useState<Room[]>([]);
 
-  useEffect(() => {
-    if (authLoading || !profile) return;
-    loadUsers();
-  }, [authLoading, profile]);
-
-  async function loadUsers() {
+  const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
       const [usersRes, residentsRes, visitorsRes] = await Promise.all([
         fetch("/api/admin/data?type=users"),
         fetch("/api/admin/data?type=residents"),
-        fetch("/api/admin/data?type=visitors"),
+        fetch("/api/admin/data?type=visitor_profiles"),
       ]);
       const usersData = await usersRes.json();
       const residentsData = await residentsRes.json();
       const visitorsData = await visitorsRes.json();
 
-      const residents = (residentsData.residents ?? []).map((r: UserRow & { rooms?: { room_number: string; block: string } | null }) => ({
-        ...r, role: "resident", rooms: r.rooms ?? null,
+      const residents: UserRow[] = (residentsData.residents ?? []).map((r: ResidentRow) => ({
+        id: r.profile?.id ?? r.user_id,
+        full_name: r.profile?.full_name ?? "Unknown",
+        email: r.profile?.email ?? "",
+        phone: r.profile?.phone ?? null,
+        role: "resident",
+        created_at: r.created_at,
+        rooms: r.room ? { room_number: r.room.room_number, block: r.room.block } : null,
       }));
-      const visitors = (visitorsData.visitors ?? []).map((v: UserRow & { id_verified?: boolean; photo_verified?: boolean; vehicle_plate?: string | null; user_id?: string }) => ({
-        id: v.user_id ?? v.id, full_name: v.full_name, email: v.email, phone: v.phone,
-        role: "visitor", created_at: v.created_at, id_verified: v.id_verified, photo_verified: v.photo_verified, vehicle_plate: v.vehicle_plate,
+
+      const visitors: UserRow[] = (visitorsData.visitors ?? []).map((v: any) => ({
+        id: v.user_id ?? v.id,
+        full_name: v.full_name,
+        email: v.email,
+        phone: v.phone,
+        role: "visitor",
+        created_at: v.created_at,
+        id_verified: v.id_verified,
+        photo_verified: v.photo_verified,
       }));
-      const guards = (usersData.users ?? []).filter((u: UserRow) => u.role === "guard");
-      const admins = (usersData.users ?? []).filter((u: UserRow) => u.role === "admin");
+
+      const guards: UserRow[] = (usersData.users ?? [])
+        .filter((u: UserRow) => u.role === "guard")
+        .map((u: UserRow) => ({ ...u }));
+
+      const admins: UserRow[] = (usersData.users ?? [])
+        .filter((u: UserRow) => u.role === "admin")
+        .map((u: UserRow) => ({ ...u }));
 
       setUsers([...admins, ...residents, ...visitors, ...guards]);
-    } catch { setUsers([]); }
+    } catch {
+      setUsers([]);
+    }
     setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (authLoading || !profile) return;
+    loadUsers();
+  }, [authLoading, profile, loadUsers]);
+
+  async function loadAvailableRooms() {
+    try {
+      const res = await fetch("/api/admin/data?type=rooms");
+      const data = await res.json();
+      const unoccupied = (data.rooms ?? []).filter((r: any) => !r.is_occupied);
+      setAvailableRooms(unoccupied);
+    } catch {
+      setAvailableRooms([]);
+    }
   }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setCreating(true);
     try {
+      const payload: any = {
+        action: "create_user",
+        email: form.email,
+        password: form.password,
+        fullName: form.fullName,
+        phone: form.phone,
+        role: form.role,
+      };
+
+      // Add room assignment for residents
+      if (form.role === "resident") {
+        if (!form.roomId) {
+          showToast("Please select a room for the resident", "error");
+          setCreating(false);
+          return;
+        }
+        payload.roomId = form.roomId;
+        payload.studentNumber = form.studentNumber;
+      }
+
       const res = await fetch("/api/admin/crud", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "create_user", ...form }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
-      if (data.error) { showToast(data.error, "error"); return; }
-      showToast("Account created", "success");
+      if (data.error) {
+        showToast(data.error, "error");
+        return;
+      }
+      showToast(`${form.role.charAt(0).toUpperCase() + form.role.slice(1)} account created`, "success");
       setShowCreate(false);
-      setForm({ email: "", password: "", fullName: "", phone: "", role: "resident" });
+      setForm({ email: "", password: "", fullName: "", phone: "", role: "resident", roomId: "", studentNumber: "" });
       loadUsers();
-    } catch { showToast("Failed to create account", "error"); }
+    } catch {
+      showToast("Failed to create account", "error");
+    }
     setCreating(false);
   }
 
@@ -100,15 +172,22 @@ export default function UsersPage() {
         body: JSON.stringify({ action: "deactivate_user", userId: user.id }),
       });
       const data = await res.json();
-      if (data.error) { showToast(data.error, "error"); return; }
+      if (data.error) {
+        showToast(data.error, "error");
+        return;
+      }
       showToast("User deactivated", "success");
       loadUsers();
-    } catch { showToast("Failed to deactivate", "error"); }
+    } catch {
+      showToast("Failed to deactivate", "error");
+    }
   }
 
   const filtered = users.filter((u) => {
     const matchTab = activeTab === "all" || u.role === activeTab;
-    const matchSearch = !search || u.full_name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase());
+    const matchSearch = !search ||
+      u.full_name.toLowerCase().includes(search.toLowerCase()) ||
+      u.email.toLowerCase().includes(search.toLowerCase());
     return matchTab && matchSearch;
   });
 
@@ -117,6 +196,7 @@ export default function UsersPage() {
     resident: users.filter((u) => u.role === "resident").length,
     visitor: users.filter((u) => u.role === "visitor").length,
     guard: users.filter((u) => u.role === "guard").length,
+    admin: users.filter((u) => u.role === "admin").length,
   };
 
   if (authLoading || loading || !profile) {
@@ -134,7 +214,13 @@ export default function UsersPage() {
           <h1 className="font-display text-3xl italic text-ink">Users</h1>
           <p className="mt-1 text-sm text-ink/50">Manage residents, visitors, guards, and admins.</p>
         </div>
-        <button onClick={() => setShowCreate(true)} className="focus-ring rounded-card bg-ink px-4 py-2 text-sm font-medium text-parchment hover:bg-ink-light transition-colors">
+        <button
+          onClick={() => {
+            setShowCreate(true);
+            loadAvailableRooms();
+          }}
+          className="focus-ring rounded-card bg-ink px-4 py-2 text-sm font-medium text-parchment hover:bg-ink-light transition-colors"
+        >
           + Create Account
         </button>
       </div>
@@ -223,7 +309,11 @@ export default function UsersPage() {
         <form onSubmit={handleCreate} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-ink mb-1">Role</label>
-            <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="focus-ring w-full rounded-card border border-ink/15 bg-parchment px-3 py-2 text-sm">
+            <select
+              value={form.role}
+              onChange={(e) => setForm({ ...form, role: e.target.value, roomId: "", studentNumber: "" })}
+              className="focus-ring w-full rounded-card border border-ink/15 bg-parchment px-3 py-2 text-sm"
+            >
               <option value="resident">Resident</option>
               <option value="guard">Guard</option>
               <option value="admin">Admin</option>
@@ -241,9 +331,52 @@ export default function UsersPage() {
             <label className="block text-sm font-medium text-ink mb-1">Phone</label>
             <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="focus-ring w-full rounded-card border border-ink/15 bg-parchment px-3 py-2 text-sm" />
           </div>
+
+          {form.role === "resident" && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-ink mb-1">Block & Room *</label>
+                <select
+                  required
+                  value={form.roomId}
+                  onChange={(e) => setForm({ ...form, roomId: e.target.value })}
+                  className="focus-ring w-full rounded-card border border-ink/15 bg-parchment px-3 py-2 text-sm"
+                >
+                  <option value="">Select a room…</option>
+                  {["A", "B"].map((block) => (
+                    <optgroup key={block} label={`Block ${block}`}>
+                      {availableRooms
+                        .filter((r) => r.block === block)
+                        .map((room) => (
+                          <option key={room.id} value={room.id}>
+                            Block {room.block} — Room {room.room_number}
+                          </option>
+                        ))}
+                    </optgroup>
+                  ))}
+                </select>
+                {availableRooms.length === 0 && (
+                  <p className="mt-1 text-xs text-brass">No unoccupied rooms available. Assign rooms from the Rooms page first.</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-ink mb-1">Student Number (optional)</label>
+                <input value={form.studentNumber} onChange={(e) => setForm({ ...form, studentNumber: e.target.value })} className="focus-ring w-full rounded-card border border-ink/15 bg-parchment px-3 py-2 text-sm" />
+              </div>
+            </>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-ink mb-1">Password</label>
-            <input required type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="focus-ring w-full rounded-card border border-ink/15 bg-parchment px-3 py-2 text-sm" />
+            <input
+              required
+              type="password"
+              minLength={8}
+              value={form.password}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
+              className="focus-ring w-full rounded-card border border-ink/15 bg-parchment px-3 py-2 text-sm"
+              placeholder="Minimum 8 characters"
+            />
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={() => setShowCreate(false)} className="focus-ring rounded-card border border-ink/15 px-4 py-2 text-sm font-medium text-ink hover:bg-ink/5">Cancel</button>
@@ -276,7 +409,6 @@ export default function UsersPage() {
               {selectedUser.role === "visitor" && (
                 <>
                   <div><span className="text-ink/50">ID Verified</span><p className="font-medium text-ink">{selectedUser.id_verified ? "✓ Yes" : "—"}</p></div>
-                  <div><span className="text-ink/50">Vehicle</span><p className="font-medium text-ink">{selectedUser.vehicle_plate || "—"}</p></div>
                 </>
               )}
             </div>

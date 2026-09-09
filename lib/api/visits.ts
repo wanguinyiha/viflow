@@ -95,7 +95,7 @@ export async function denyVisit(id: string) {
 export async function getCurrentlyInside() {
   const { data, error } = await supabase
     .from("visits")
-    .select("*, visitor:visitor_profiles(full_name, photo_url, vehicle_plate), resident:profiles!visits_resident_id_fkey(full_name), room:rooms(room_number, block)")
+    .select("*, visitor:visitor_profiles(full_name, photo_url), resident:profiles!visits_resident_id_fkey(full_name), room:rooms(room_number, block)")
     .eq("status", "checked_in")
     .order("checked_in_at", { ascending: false });
   return { data: (data ?? []) as Visit[], error };

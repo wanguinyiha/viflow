@@ -4,6 +4,29 @@ import { supabaseAdmin } from "@/lib/supabaseServer";
 export async function POST() {
   const log: string[] = [];
 
+  // 0. Clean existing data
+  await supabaseAdmin.from("audit_logs").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  await supabaseAdmin.from("activity_reviews").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  await supabaseAdmin.from("notifications").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  await supabaseAdmin.from("visit_logs").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  await supabaseAdmin.from("verifications").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  await supabaseAdmin.from("favourite_visitors").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  await supabaseAdmin.from("vehicles").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  await supabaseAdmin.from("visits").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  await supabaseAdmin.from("invitations").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  await supabaseAdmin.from("visitor_profiles").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  await supabaseAdmin.from("resident_profiles").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  await supabaseAdmin.from("rooms").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  await supabaseAdmin.from("profiles").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  // Clean auth users
+  const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+  if (existingUsers?.users) {
+    for (const u of existingUsers.users) {
+      await supabaseAdmin.auth.admin.deleteUser(u.id);
+    }
+  }
+  log.push("Cleaned existing data");
+
   // 1. Create auth users and profiles
   const demoUsers = [
     { email: "admin@viflow.com", password: "admin123", full_name: "Sarah Mwangi", role: "admin" as const },
@@ -61,12 +84,12 @@ export async function POST() {
 
   // 4. Create resident profile for demo resident
   if (userIds.resident && roomA4) {
-    await supabaseAdmin.from("resident_profiles").upsert({
+    await supabaseAdmin.from("resident_profiles").insert({
       user_id: userIds.resident,
       room_id: roomA4.id,
       student_number: "USIU-2024-001",
       status: "active",
-    }, { onConflict: "user_id" });
+    });
 
     // Mark room as occupied
     await supabaseAdmin.from("rooms").update({ is_occupied: true }).eq("id", roomA4.id);
@@ -74,8 +97,9 @@ export async function POST() {
   }
 
   // 5. Demo visitor - fully verified
+  let demoVisitorProfileId = "";
   if (userIds.visitor) {
-    await supabaseAdmin.from("visitor_profiles").upsert({
+    const { data: vp } = await supabaseAdmin.from("visitor_profiles").insert({
       user_id: userIds.visitor,
       full_name: "Amara Kimani",
       email: "visitor@viflow.com",
@@ -83,12 +107,10 @@ export async function POST() {
       id_number: "39284756",
       id_verified: true,
       photo_verified: true,
-    }, { onConflict: "user_id" });
-
-    // Get visitor profile ID
-    const { data: vp } = await supabaseAdmin.from("visitor_profiles").select("id").eq("user_id", userIds.visitor).single();
+    }).select("id").single();
 
     if (vp) {
+      demoVisitorProfileId = vp.id;
       await supabaseAdmin.from("vehicles").upsert({
         visitor_id: vp.id,
         registration_number: "KDA 123B",
@@ -111,13 +133,12 @@ export async function POST() {
 
   const visitorProfileIds: string[] = [];
   for (const v of extraVisitors) {
-    // Create visitor profile linked to demo resident
-    const { data: vp, error } = await supabaseAdmin.from("visitor_profiles").upsert({
-      user_id: userIds.visitor, // Link to visitor user for simplicity
+    const { data: vp, error } = await supabaseAdmin.from("visitor_profiles").insert({
+      user_id: userIds.visitor,
       full_name: v.full_name,
       email: v.email,
       phone: v.phone,
-    }, { onConflict: "email" }).select("id").single();
+    }).select("id").single();
 
     if (vp) visitorProfileIds.push(vp.id);
     if (error) log.push(`Visitor ${v.full_name}: ${error.message}`);
@@ -130,7 +151,7 @@ export async function POST() {
 
   // 8. Invitations
   const invitations = [
-    { visitor_name: "Amara Kimani", visitor_email: "visitor@viflow.com", reason: "Study session", status: "accepted", visit_start: daysAgo(2), visit_end: daysFromNow(28), visitor_id: userIds.visitor, room_id: roomA4?.id },
+    { visitor_name: "Amara Kimani", visitor_email: "visitor@viflow.com", reason: "Study session", status: "accepted", visit_start: daysAgo(2), visit_end: daysFromNow(28), visitor_id: demoVisitorProfileId, room_id: roomA4?.id },
     { visitor_name: "Aisha Kwame", visitor_email: "aisha@example.com", reason: "Birthday celebration", status: "accepted", visit_start: daysAgo(1), visit_end: daysFromNow(29), visitor_id: visitorProfileIds[0], room_id: roomA4?.id },
     { visitor_name: "Brian Ochieng", visitor_email: "brian@example.com", reason: "Group project", status: "accepted", visit_start: new Date().toISOString(), visit_end: daysFromNow(5), visitor_id: visitorProfileIds[1], room_id: roomA1?.id },
     { visitor_name: "Chloe Njeri", visitor_email: "chloe@example.com", reason: "Family visit", status: "pending", visit_start: new Date().toISOString(), visit_end: daysFromNow(3), visitor_id: visitorProfileIds[2], room_id: roomB2?.id },
@@ -145,14 +166,14 @@ export async function POST() {
       visit_start: inv.visit_start, visit_end: inv.visit_end,
       room_id: inv.room_id,
     }).select("id").single();
-    if (error) log.push(`Invite: ${error.message}`);
+    if (error) log.push(`Invite ${inv.visitor_name}: ${error.message} (visitor_id: ${inv.visitor_id})`);
     else inviteIds.push(data.id);
   }
   log.push(`Invitations: ${inviteIds.length}`);
 
   // 9. Visits
   const visits = [
-    { inviteIdx: 0, status: "checked_in", checked_in_at: hoursAgo(3), visitor_id: userIds.visitor, room_id: roomA4?.id },
+    { inviteIdx: 0, status: "checked_in", checked_in_at: hoursAgo(3), visitor_id: demoVisitorProfileId, room_id: roomA4?.id },
     { inviteIdx: 1, status: "checked_in", checked_in_at: hoursAgo(2), visitor_id: visitorProfileIds[0], room_id: roomA4?.id },
     { inviteIdx: 2, status: "checked_out", checked_in_at: hoursAgo(5), checked_out_at: hoursAgo(3), visitor_id: visitorProfileIds[1], room_id: roomA1?.id },
   ];

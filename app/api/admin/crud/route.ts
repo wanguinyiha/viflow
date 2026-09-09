@@ -10,11 +10,12 @@ export async function POST(request: Request) {
 
     switch (action) {
       case "create_user": {
-        const { email, password, fullName, phone, role } = data;
+        const { email, password, fullName, phone, role, roomId, studentNumber } = data;
         if (!email || !password || !fullName || !role) {
           return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
         }
 
+        // Create Supabase Auth user with service role (server-side, no client exposure)
         const { data: userData, error: authError } = await supabaseAdmin.auth.admin.createUser({
           email,
           password,
@@ -24,16 +25,68 @@ export async function POST(request: Request) {
         if (authError) return NextResponse.json({ error: authError.message }, { status: 400 });
 
         const userId = userData.user.id;
+
+        // Create profile record
         const { error: profileError } = await supabaseAdmin.from("profiles").upsert({
           id: userId, full_name: fullName, email, phone: phone || null, role,
         }, { onConflict: "id" });
-        if (profileError) return NextResponse.json({ error: profileError.message }, { status: 400 });
+        if (profileError) {
+          // Cleanup: delete auth user if profile creation fails
+          await supabaseAdmin.auth.admin.deleteUser(userId);
+          return NextResponse.json({ error: profileError.message }, { status: 400 });
+        }
+
+        // Handle role-specific profile creation
+        if (role === "resident") {
+          if (!roomId) {
+            // Cleanup: delete auth user and profile
+            await supabaseAdmin.auth.admin.deleteUser(userId);
+            await supabaseAdmin.from("profiles").delete().eq("id", userId);
+            return NextResponse.json({ error: "Room is required for residents" }, { status: 400 });
+          }
+
+          // Check if room is already occupied
+          const { data: existingResident } = await supabaseAdmin
+            .from("resident_profiles")
+            .select("id")
+            .eq("room_id", roomId)
+            .single();
+          if (existingResident) {
+            await supabaseAdmin.auth.admin.deleteUser(userId);
+            await supabaseAdmin.from("profiles").delete().eq("id", userId);
+            return NextResponse.json({ error: "Room is already occupied" }, { status: 400 });
+          }
+
+          // Create resident profile with room assignment
+          const { error: residentError } = await supabaseAdmin.from("resident_profiles").insert({
+            user_id: userId,
+            room_id: roomId,
+            student_number: studentNumber || null,
+            status: "active",
+          });
+          if (residentError) {
+            await supabaseAdmin.auth.admin.deleteUser(userId);
+            await supabaseAdmin.from("profiles").delete().eq("id", userId);
+            return NextResponse.json({ error: residentError.message }, { status: 400 });
+          }
+
+          // Mark room as occupied
+          await supabaseAdmin.from("rooms").update({ is_occupied: true }).eq("id", roomId);
+        }
 
         if (role === "visitor") {
           await supabaseAdmin.from("visitor_profiles").upsert({
             user_id: userId, full_name: fullName, email, phone: phone || null,
           }, { onConflict: "user_id" });
         }
+
+        // Log the action
+        await supabaseAdmin.from("audit_logs").insert({
+          action: "user_created",
+          entity_type: "profile",
+          entity_id: userId,
+          details: { email, full_name: fullName, role },
+        });
 
         return NextResponse.json({ user: userData.user }, { status: 201 });
       }
@@ -107,6 +160,37 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: true });
       }
 
+      case "change_room": {
+        const { residentProfileId, newRoomId } = data;
+        if (!residentProfileId || !newRoomId) return NextResponse.json({ error: "residentProfileId and newRoomId required" }, { status: 400 });
+
+        // Get current room
+        const { data: currentProfile } = await supabaseAdmin.from("resident_profiles").select("room_id").eq("id", residentProfileId).single();
+        if (!currentProfile) return NextResponse.json({ error: "Resident not found" }, { status: 404 });
+
+        // Check if new room is occupied
+        const { data: newRoomOccupant } = await supabaseAdmin.from("resident_profiles").select("id").eq("room_id", newRoomId).single();
+        if (newRoomOccupant) return NextResponse.json({ error: "New room is already occupied" }, { status: 400 });
+
+        // Update resident profile
+        const { error } = await supabaseAdmin.from("resident_profiles").update({ room_id: newRoomId }).eq("id", residentProfileId);
+        if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+        // Update room occupancy
+        await supabaseAdmin.from("rooms").update({ is_occupied: false }).eq("id", currentProfile.room_id);
+        await supabaseAdmin.from("rooms").update({ is_occupied: true }).eq("id", newRoomId);
+
+        // Log the room change
+        await supabaseAdmin.from("audit_logs").insert({
+          action: "room_changed",
+          entity_type: "resident_profile",
+          entity_id: residentProfileId,
+          details: { old_room_id: currentProfile.room_id, new_room_id: newRoomId },
+        });
+
+        return NextResponse.json({ success: true });
+      }
+
       case "update_resident_status": {
         const { residentProfileId, status } = data;
         if (!residentProfileId || !status) return NextResponse.json({ error: "residentProfileId and status required" }, { status: 400 });
@@ -146,6 +230,10 @@ export async function POST(request: Request) {
 
       case "delete_room": {
         const { roomId } = data;
+        // Check if room has a resident
+        const { data: occupant } = await supabaseAdmin.from("resident_profiles").select("id").eq("room_id", roomId).single();
+        if (occupant) return NextResponse.json({ error: "Cannot delete occupied room" }, { status: 400 });
+
         const { error } = await supabaseAdmin.from("rooms").delete().eq("id", roomId);
         if (error) return NextResponse.json({ error: error.message }, { status: 400 });
         return NextResponse.json({ success: true });
@@ -159,9 +247,18 @@ export async function POST(request: Request) {
       }
 
       case "deny_visit": {
-        const { visitId } = data;
+        const { visitId, reason } = data;
         const { error } = await supabaseAdmin.from("visits").update({ status: "denied" }).eq("id", visitId);
         if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+        // Log the denial
+        await supabaseAdmin.from("audit_logs").insert({
+          action: "visit_denied",
+          entity_type: "visit",
+          entity_id: visitId,
+          details: { reason: reason || "No reason provided" },
+        });
+
         return NextResponse.json({ success: true });
       }
 

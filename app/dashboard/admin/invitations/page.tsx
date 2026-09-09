@@ -20,7 +20,6 @@ interface InvitationRow {
   visitor_email: string;
   visitor_name: string;
   room_id: string;
-  hostel_id: string | null;
   visit_start: string;
   visit_end: string;
   reason: string | null;
@@ -28,7 +27,8 @@ interface InvitationRow {
   status: string;
   created_at: string;
   updated_at: string;
-  profiles?: { id: string; full_name: string; email: string } | null;
+  resident?: { id: string; full_name: string; email: string } | null;
+  room?: { room_number: string; block: string } | null;
 }
 
 export default function AdminInvitationsPage() {
@@ -105,7 +105,7 @@ export default function AdminInvitationsPage() {
     {
       key: "resident_id",
       label: "Resident",
-      render: (row) => row.profiles?.full_name ?? row.resident_id ?? "\u2014",
+      render: (row) => row.resident?.full_name ?? "\u2014",
     },
     {
       key: "reason",
@@ -248,7 +248,7 @@ export default function AdminInvitationsPage() {
               <div className="mt-3 text-sm">
                 <span className="text-ink/50">Name</span>
                 <p className="font-medium text-ink">
-                  {selectedInvitation.profiles?.full_name ?? "\u2014"}
+                  {selectedInvitation.resident?.full_name ?? "\u2014"}
                 </p>
               </div>
             </div>

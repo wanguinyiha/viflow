@@ -66,6 +66,16 @@ export async function GET(request: Request) {
         return NextResponse.json({ profiles: data ?? [], total: finalCount.count ?? 0 });
       }
 
+      // Alias for profiles - used by users page
+      case "users": {
+        let query = supabaseAdmin.from("profiles").select("*").order("created_at", { ascending: false });
+        if (roleFilter) query = query.eq("role", roleFilter);
+        const { data } = await query.range(offset, offset + limit - 1);
+        const countQuery = supabaseAdmin.from("profiles").select("*", { count: "exact", head: true });
+        const finalCount = roleFilter ? await countQuery.eq("role", roleFilter) : await countQuery;
+        return NextResponse.json({ users: data ?? [], total: finalCount.count ?? 0 });
+      }
+
       case "resident_profiles": {
         let query = supabaseAdmin
           .from("resident_profiles")
@@ -79,12 +89,26 @@ export async function GET(request: Request) {
         return NextResponse.json({ resident_profiles: data ?? [], total: finalCount.count ?? 0 });
       }
 
+      // Alias for resident_profiles
+      case "residents": {
+        let query = supabaseAdmin
+          .from("resident_profiles")
+          .select("*, profile:profiles!resident_profiles_user_id_fkey(id, full_name, email, phone), room:rooms!resident_profiles_room_id_fkey(id, room_number, block, floor)")
+          .order("created_at", { ascending: false });
+        if (statusFilter) query = query.eq("status", statusFilter);
+        if (userId) query = query.eq("user_id", userId);
+        const { data } = await query.range(offset, offset + limit - 1);
+        const countQuery = supabaseAdmin.from("resident_profiles").select("*", { count: "exact", head: true });
+        const finalCount = statusFilter ? await countQuery.eq("status", statusFilter) : await countQuery;
+        return NextResponse.json({ residents: data ?? [], total: finalCount.count ?? 0 });
+      }
+
       case "visitor_profiles": {
         let query = supabaseAdmin.from("visitor_profiles").select("*").order("created_at", { ascending: false });
         if (userId) query = query.eq("user_id", userId);
         const { data } = await query.range(offset, offset + limit - 1);
         const { count } = await supabaseAdmin.from("visitor_profiles").select("*", { count: "exact", head: true });
-        return NextResponse.json({ visitor_profiles: data ?? [], total: count ?? 0 });
+        return NextResponse.json({ visitor_profiles: data ?? [], visitors: data ?? [], total: count ?? 0 });
       }
 
       case "guards": {
@@ -121,7 +145,7 @@ export async function GET(request: Request) {
       case "visits": {
         let query = supabaseAdmin
           .from("visits")
-          .select("*, invitation:invitations!visits_invitation_id_fkey(visitor_name, reason, visit_code), room:rooms!visits_room_id_fkey(room_number, block)")
+          .select("*, invitation:invitations!visits_invitation_id_fkey(visitor_name, reason, visit_code), room:rooms!visits_room_id_fkey(room_number, block), visitor:visitor_profiles(full_name, email), resident:profiles!visits_resident_id_fkey(full_name)")
           .order("created_at", { ascending: false });
         if (statusFilter) query = query.eq("status", statusFilter);
         if (userId) query = query.eq("resident_id", userId);

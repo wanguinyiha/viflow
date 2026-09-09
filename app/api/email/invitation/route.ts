@@ -29,14 +29,13 @@ export async function POST(request: Request) {
 
     const resident = invitation.resident as { full_name: string } | null;
     const room = invitation.room as { room_number: string; block: string } | null;
-    const visitor = invitation.visitor as { full_name: string; email: string } | null;
 
     if (!resident || !room) {
       return NextResponse.json({ error: "Incomplete invitation data" }, { status: 400 });
     }
 
-    const visitorEmail = visitor?.email ?? invitation.visitor_email;
-    const visitorName = visitor?.full_name ?? invitation.visitor_name ?? "Visitor";
+    const visitorEmail = invitation.visitor_email;
+    const visitorName = invitation.visitor_name || "Visitor";
 
     const { error } = await sendInvitationEmail({
       visitorEmail,

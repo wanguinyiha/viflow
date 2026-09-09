@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import Modal from "@/components/ui/Modal";
 import SlideOver from "@/components/ui/SlideOver";
@@ -26,12 +26,7 @@ export default function GuardsPage() {
   // Deactivate confirmation
   const [deleteTarget, setDeleteTarget] = useState<Profile | null>(null);
 
-  useEffect(() => {
-    if (authLoading || !profile) return;
-    loadGuards();
-  }, [authLoading, profile]);
-
-  async function loadGuards() {
+  const loadGuards = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch("/api/admin/data?type=guards");
@@ -41,7 +36,12 @@ export default function GuardsPage() {
       setGuards([]);
     }
     setLoading(false);
-  }
+  }, []);
+
+  useEffect(() => {
+    if (authLoading || !profile) return;
+    loadGuards();
+  }, [authLoading, profile, loadGuards]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -141,6 +141,7 @@ export default function GuardsPage() {
           <thead className="border-b border-ink/10 bg-parchment-dim">
             <tr>
               <th className="px-4 py-3 font-medium text-ink/70">Name</th>
+              <th className="px-4 py-3 font-medium text-ink/70">Email</th>
               <th className="px-4 py-3 font-medium text-ink/70">Phone</th>
               <th className="px-4 py-3 font-medium text-ink/70">Created</th>
               <th className="px-4 py-3 font-medium text-ink/70 text-right">Actions</th>
@@ -151,16 +152,16 @@ export default function GuardsPage() {
               <tr key={g.id} className="hover:bg-parchment-dim/50">
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-ink/10 text-xs font-medium text-ink">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sage/20 text-xs font-medium text-ink">
                       {g.full_name.charAt(0)}
                     </div>
                     <div>
                       <p className="font-medium text-ink">{g.full_name}</p>
-                      <p className="text-xs text-ink/50">{g.email}</p>
                     </div>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-ink/60">{g.phone || "\u2014"}</td>
+                <td className="px-4 py-3 text-ink/60">{g.email}</td>
+                <td className="px-4 py-3 text-ink/60">{g.phone || "—"}</td>
                 <td className="px-4 py-3 text-ink/50">{new Date(g.created_at).toLocaleDateString()}</td>
                 <td className="px-4 py-3 text-right">
                   <button
@@ -180,7 +181,7 @@ export default function GuardsPage() {
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-ink/40">
+                <td colSpan={5} className="px-4 py-8 text-center text-ink/40">
                   No guards found.
                 </td>
               </tr>
@@ -224,9 +225,11 @@ export default function GuardsPage() {
             <input
               required
               type="password"
+              minLength={8}
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
               className="focus-ring w-full rounded-card border border-ink/15 bg-parchment px-3 py-2 text-sm"
+              placeholder="Minimum 8 characters"
             />
           </div>
           <div className="flex justify-end gap-3 pt-2">
@@ -253,7 +256,7 @@ export default function GuardsPage() {
         {selectedGuard && (
           <div className="space-y-4">
             <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-ink/10 text-xl font-medium text-ink">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-sage/20 text-xl font-medium text-ink">
                 {selectedGuard.full_name.charAt(0)}
               </div>
               <div>
@@ -268,7 +271,7 @@ export default function GuardsPage() {
               </div>
               <div>
                 <span className="text-ink/50">Phone</span>
-                <p className="font-medium text-ink">{selectedGuard.phone || "\u2014"}</p>
+                <p className="font-medium text-ink">{selectedGuard.phone || "—"}</p>
               </div>
               <div>
                 <span className="text-ink/50">Created</span>
