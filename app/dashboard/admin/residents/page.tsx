@@ -62,8 +62,7 @@ export default function ResidentsPage() {
     try {
       const res = await fetch("/api/admin/data?type=rooms");
       const data = await res.json();
-      const unoccupied = (data.rooms ?? []).filter((r: any) => !r.is_occupied);
-      setAvailableRooms(unoccupied);
+      setAvailableRooms(data.rooms ?? []);
     } catch {
       setAvailableRooms([]);
     }
@@ -220,7 +219,7 @@ export default function ResidentsPage() {
                 <td className="px-4 py-3">
                   {r.room ? (
                     <span className="inline-block rounded-full bg-sage/20 px-2 py-0.5 text-xs font-medium text-ink">
-                      Block {r.room.block} — Room {r.room.room_number}
+                      Block {r.room.block} — Room {r.room.room_number.replace(/^[AB]-/, "")}
                     </span>
                   ) : (
                     <span className="text-ink/40 text-xs">Unassigned</span>
@@ -289,7 +288,7 @@ export default function ResidentsPage() {
                 <div className="mt-3 rounded-card border border-ink/10 bg-parchment-dim/50 p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium text-ink">Block {selectedResident.room.block} — Room {selectedResident.room.room_number}</p>
+                      <p className="font-medium text-ink">Block {selectedResident.room.block} — Room {selectedResident.room.room_number.replace(/^[AB]-/, "")}</p>
                       <p className="text-sm text-ink/50">Floor {selectedResident.room.floor}</p>
                     </div>
                     <div className="space-x-2">
@@ -320,13 +319,14 @@ export default function ResidentsPage() {
                   {availableRooms
                     .filter((r) => r.block === block)
                     .map((room) => (
-                      <option key={room.id} value={room.id}>Block {room.block} — Room {room.room_number}</option>
+                      <option key={room.id} value={room.id} disabled={room.is_occupied}>
+                        Block {room.block} — Room {room.room_number.replace(/^[AB]-/, "")}{room.is_occupied ? " (Occupied)" : ""}
+                      </option>
                     ))}
                 </optgroup>
               ))}
             </select>
           </div>
-          {availableRooms.length === 0 && <p className="text-sm text-ink/40">No unoccupied rooms available.</p>}
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={() => { setShowAssign(false); setAssignTarget(null); setSelectedRoomId(""); }}
               className="focus-ring rounded-card border border-ink/15 px-4 py-2 text-sm font-medium text-ink hover:bg-ink/5">Cancel</button>
@@ -343,7 +343,7 @@ export default function ResidentsPage() {
         <div className="space-y-4">
           <p className="text-sm text-ink/60">
             Change room for {changeTarget?.profile?.full_name}.
-            {changeTarget?.room && ` Currently in Block ${changeTarget.room.block} — Room ${changeTarget.room.room_number}.`}
+            {changeTarget?.room && ` Currently in Block ${changeTarget.room.block} — Room ${changeTarget.room.room_number.replace(/^[AB]-/, "")}.`}
           </p>
           <div>
             <label className="block text-sm font-medium text-ink mb-1">New Room</label>
@@ -355,13 +355,14 @@ export default function ResidentsPage() {
                   {availableRooms
                     .filter((r) => r.block === block)
                     .map((room) => (
-                      <option key={room.id} value={room.id}>Block {room.block} — Room {room.room_number}</option>
+                      <option key={room.id} value={room.id} disabled={room.is_occupied}>
+                        Block {room.block} — Room {room.room_number.replace(/^[AB]-/, "")}{room.is_occupied ? " (Occupied)" : ""}
+                      </option>
                     ))}
                 </optgroup>
               ))}
             </select>
           </div>
-          {availableRooms.length === 0 && <p className="text-sm text-ink/40">No unoccupied rooms available.</p>}
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={() => { setShowChangeRoom(false); setChangeTarget(null); setNewRoomId(""); }}
               className="focus-ring rounded-card border border-ink/15 px-4 py-2 text-sm font-medium text-ink hover:bg-ink/5">Cancel</button>

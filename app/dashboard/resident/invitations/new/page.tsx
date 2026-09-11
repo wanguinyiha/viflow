@@ -17,11 +17,11 @@ function CreateInvitationContent() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  const [emailSent, setEmailSent] = useState(false);
   const [activeVisits, setActiveVisits] = useState(0);
   const [email, setEmail] = useState("");
   const [visitorName, setVisitorName] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [arrivalDate, setArrivalDate] = useState("");
   const [reason, setReason] = useState("");
   const [vehiclePlate, setVehiclePlate] = useState("");
   const [residentRoomId, setResidentRoomId] = useState<string | null>(null);
@@ -101,8 +101,7 @@ function CreateInvitationContent() {
       visitor_name: visitorName || undefined,
       visitor_id: visitorId || undefined,
       room_id: residentRoomId,
-      visit_start: startDate,
-      visit_end: endDate,
+      visit_start: arrivalDate,
       reason: reason || undefined,
       vehicle_registration: vehiclePlate || undefined,
     });
@@ -113,13 +112,18 @@ function CreateInvitationContent() {
       return;
     }
 
-    // Send email (non-blocking)
+    // Send email (non-blocking, with status feedback)
     if (invitation) {
+      setEmailSent(true);
       fetch("/api/email/invitation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ invitationId: invitation.id }),
-      }).catch(console.error);
+      })
+        .then((res) => {
+          if (!res.ok) console.error("Email send failed");
+        })
+        .catch(console.error);
     }
 
     router.push("/dashboard/resident/invitations");
@@ -152,6 +156,12 @@ function CreateInvitationContent() {
           </div>
         )}
 
+        {emailSent && (
+          <div className="mb-6 rounded-sm border border-sage bg-sage/5 px-4 py-3 text-sm text-sage-dim">
+            Invitation created! An email has been sent to the visitor.
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-5">
           {error && (
             <div className="rounded-sm border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>
@@ -169,16 +179,11 @@ function CreateInvitationContent() {
           <FormField label="Visitor Name (optional)" htmlFor="name" helpText="If the visitor is already registered, this is for reference only.">
             <Input id="name" type="text" value={visitorName} onChange={(e) => setVisitorName(e.target.value)} placeholder="Amara Kimani" disabled={atLimit} />
           </FormField>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <FormField label="Visit Start" htmlFor="start" required>
-              <Input id="start" type="datetime-local" required value={startDate} onChange={(e) => setStartDate(e.target.value)} disabled={atLimit} />
-            </FormField>
-            <FormField label="Visit End" htmlFor="end" required>
-              <Input id="end" type="datetime-local" required value={endDate} onChange={(e) => setEndDate(e.target.value)} disabled={atLimit} />
-            </FormField>
-          </div>
+          <FormField label="Arrival Date" htmlFor="arrival" required helpText="The guard will check out the visitor when they leave.">
+            <Input id="arrival" type="datetime-local" required value={arrivalDate} onChange={(e) => setArrivalDate(e.target.value)} disabled={atLimit} />
+          </FormField>
           <FormField label="Reason (optional)" htmlFor="reason">
-            <Input id="reason" type="text" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Personal visit" disabled={atLimit} />
+            <Textarea id="reason" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Personal visit, study session, etc." disabled={atLimit} rows={3} />
           </FormField>
           <FormField label="Vehicle Registration (optional)" htmlFor="plate">
             <Input id="plate" type="text" value={vehiclePlate} onChange={(e) => setVehiclePlate(e.target.value)} placeholder="KDA 214B" disabled={atLimit} />

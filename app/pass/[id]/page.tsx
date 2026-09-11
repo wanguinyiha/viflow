@@ -9,7 +9,6 @@ interface InvitationData {
   visit_code: string;
   status: string;
   visit_start: string;
-  visit_end: string;
   resident: { full_name: string } | null;
   room: { room_number: string; block: string } | null;
   visitor: { full_name: string } | null;
@@ -55,7 +54,6 @@ export default function PassPage() {
   }
 
   const start = new Date(invitation.visit_start);
-  const end = new Date(invitation.visit_end);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-parchment px-6 py-12">
@@ -77,13 +75,11 @@ export default function PassPage() {
           room={`${invitation.room?.room_number ?? "?"}, ${invitation.room?.block ?? "?"}`}
           visitDate={start.toLocaleDateString()}
           validFrom={start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-          validUntil={end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           visitCode={invitation.visit_code}
         />
 
         <p className="mt-8 max-w-sm mx-auto text-sm text-ink/50">
           Present this invitation pass to the hostel guard when you arrive.
-          This pass is valid only for the specified visit period.
         </p>
       </div>
     </div>

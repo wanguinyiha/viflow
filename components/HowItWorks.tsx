@@ -1,27 +1,27 @@
 const steps = [
   {
-    title: "A profile, built once",
-    body: "The visitor creates a digital profile with their name, ID, photo and vehicle details — the last time they'll ever need to type most of it.",
+    title: "Get an Invitation",
+    body: "A resident creates a visitor invitation with the visitor's details and sends it to their email.",
   },
   {
-    title: "The resident sends an invitation",
-    body: "A student expecting a guest sends an invite to the visitor's email. First-time visitors fill in their profile from there.",
+    title: "Complete Your Details",
+    body: "If you are a new visitor, simply complete the required information from the invitation. Returning visitors can use their existing information without repeating the entire process.",
   },
   {
-    title: "The resident authorizes this visit",
-    body: "Having a profile on file never grants entry by itself. The resident still has to approve this specific visit, at this specific time.",
+    title: "Receive Your Visit Pass",
+    body: "Once the visit is authorized, you receive your visit details and QR code, if required.",
   },
   {
-    title: "A QR pass is issued",
-    body: "Once authorized, the visitor gets a QR code on their phone, tied to that one visit, that one resident, that one room.",
+    title: "Arrive at the Hostel",
+    body: "Present your visit pass to the guard at the gate. The guard verifies your invitation, identity, and the resident you are visiting.",
   },
   {
-    title: "The guard scans at the gate",
-    body: "ViFlow checks the code against the visitor, the visit, the resident and the room in one step, and the guard sees a clear go or no-go.",
+    title: "Get Checked In",
+    body: "Once everything is verified, the guard approves your visit and checks you in. Your visit is securely recorded.",
   },
   {
-    title: "Entry and exit are logged",
-    body: "Check-in is recorded automatically. When the visitor leaves, the guard checks them out, closing the visit.",
+    title: "Check Out When You Leave",
+    body: "When you leave the hostel, the guard checks you out, completing your visit record.",
   },
 ];
 
@@ -31,10 +31,10 @@ export default function HowItWorks() {
       <div className="mx-auto max-w-6xl px-6 py-20 md:px-10 md:py-28">
         <div className="max-w-[46ch]">
           <h2 className="font-display text-3xl italic text-ink sm:text-4xl">
-            One visit, start to finish.
+            How It Works
           </h2>
           <p className="mt-4 text-ink/75">
-            The profile carries over. The authorization never does.
+            One visit, start to finish. The profile carries over. The authorization never does.
           </p>
         </div>
 

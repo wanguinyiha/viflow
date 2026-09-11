@@ -19,6 +19,7 @@ interface RecentVisit {
   visit_code: string;
   status: string;
   checked_in_at: string | null;
+  checked_out_at: string | null;
   invitation: { visitor_name: string; reason: string | null } | null;
   room: { room_number: string; block: string } | null;
 }
@@ -128,15 +129,20 @@ export default function AdminDashboard() {
                   <div>
                     <p className="text-sm font-medium text-ink">{v.invitation?.visitor_name ?? v.visit_code}</p>
                     <p className="text-xs text-ink/50">
-                      {v.room ? `Room ${v.room.block}${v.room.room_number}` : ""} &middot; {v.invitation?.reason ?? ""}
+                      {v.room ? `Room ${v.room.block}${v.room.room_number.replace(/^[AB]-/, "")}` : ""} &middot; {v.invitation?.reason ?? ""}
+                    </p>
+                    <p className="text-xs text-ink/40 mt-0.5">
+                      {v.checked_in_at ? `In: ${new Date(v.checked_in_at).toLocaleTimeString()}` : ""}
+                      {v.checked_out_at ? ` — Out: ${new Date(v.checked_out_at).toLocaleTimeString()}` : ""}
                     </p>
                   </div>
                   <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                    v.status === "checked_in" ? "bg-sage/20 text-ink" :
+                    v.status === "approved" ? "bg-blue-50 text-blue-700" :
                     v.status === "checked_out" ? "bg-ink/10 text-ink/60" :
+                    v.status === "denied" ? "bg-red-50 text-red-700" :
                     "bg-brass/20 text-ink"
                   }`}>
-                    {v.status.replace(/_/g, " ")}
+                    {v.status === "approved" ? "active" : v.status.replace(/_/g, " ")}
                   </span>
                 </div>
               ))}

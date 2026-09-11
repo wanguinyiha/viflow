@@ -21,7 +21,7 @@ export default function ActiveVisitorsPage() {
       const { data } = await supabase
         .from("visits")
         .select("*, visitor:visitor_profiles(full_name, photo_url, email), resident:profiles!visits_resident_id_fkey(full_name), room:rooms(room_number, block)")
-        .eq("status", "checked_in")
+        .eq("status", "approved")
         .order("checked_in_at", { ascending: false });
 
       setVisits((data ?? []) as Visit[]);
@@ -99,7 +99,7 @@ export default function ActiveVisitorsPage() {
                     </td>
                     <td className="px-4 py-3 text-[15px] text-ink/70">{(v.resident as any)?.full_name ?? "—"}</td>
                     <td className="px-4 py-3 text-[15px] text-ink/70">
-                      {v.room ? `Block ${(v.room as any).block} — Room ${(v.room as any).room_number}` : "—"}
+                      {v.room ? `Block ${(v.room as any).block} — Room ${((v.room as any).room_number as string).replace(/^[AB]-/, "")}` : "—"}
                     </td>
                     <td className="px-4 py-3 font-mono text-sm text-ink/70">
                       {v.checked_in_at ? new Date(v.checked_in_at).toLocaleTimeString() : "—"}

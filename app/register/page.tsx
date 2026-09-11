@@ -6,6 +6,15 @@ import MultiStepForm from "@/components/ui/MultiStepForm";
 import FormField, { Input, Select } from "@/components/ui/FormField";
 import { supabase } from "@/lib/supabaseClient";
 
+function generateRandomPassword() {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+  let password = "";
+  for (let i = 0; i < 12; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return password;
+}
+
 function RegisterContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -40,10 +49,11 @@ function RegisterContent() {
               placeholder="you@example.com"
             />
           </FormField>
-          <FormField label="Phone" htmlFor="phone">
+          <FormField label="Phone" htmlFor="phone" required>
             <Input
               id="phone"
               type="tel"
+              required
               value={(data.phone as string) ?? ""}
               onChange={(e) => update({ phone: e.target.value })}
               placeholder="+254 700 000000"
@@ -68,7 +78,7 @@ function RegisterContent() {
               placeholder="National ID or Passport number"
             />
           </FormField>
-          <FormField label="ID Type" htmlFor="idType">
+          <FormField label="ID Type" htmlFor="idType" required>
             <Select
               id="idType"
               value={(data.idType as string) ?? "national_id"}
@@ -83,42 +93,19 @@ function RegisterContent() {
       ),
     },
     {
-      label: "Photo",
-      content: (data: Record<string, unknown>, update: (d: Record<string, unknown>) => void) => (
-        <div className="space-y-5">
-          <h2 className="font-display text-2xl text-ink">Profile Photo</h2>
-          <p className="text-ink/60">Upload a clear photo of yourself. This will be used for visual verification at the gate.</p>
-          <FormField label="Profile Photo" htmlFor="photo" helpText="JPEG or PNG, maximum 5MB">
-            <Input
-              id="photo"
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) update({ photoFile: file });
-              }}
-              className="file:mr-4 file:rounded-sm file:border-0 file:bg-ink file:px-4 file:py-2 file:text-sm file:text-parchment"
-            />
-          </FormField>
-          {data.photoFile instanceof File && (
-            <p className="text-sm text-sage-dim">Photo selected: {data.photoFile.name}</p>
-          )}
-        </div>
-      ),
-    },
-    {
       label: "Vehicle",
       content: (data: Record<string, unknown>, update: (d: Record<string, unknown>) => void) => (
         <div className="space-y-5">
           <h2 className="font-display text-2xl text-ink">Vehicle Information</h2>
-          <p className="text-ink/60">If you will be arriving by vehicle, provide the registration details. You can skip this step.</p>
-          <FormField label="Registration Number" htmlFor="plate">
+          <p className="text-ink/60">If you will be arriving by vehicle, provide the registration details. Write N/A if you do not have a vehicle.</p>
+          <FormField label="Registration Number" htmlFor="plate" required helpText="Write N/A if you have no vehicle">
             <Input
               id="plate"
               type="text"
+              required
               value={(data.vehiclePlate as string) ?? ""}
               onChange={(e) => update({ vehiclePlate: e.target.value })}
-              placeholder="KDA 214B"
+              placeholder="KDA 214B or N/A"
             />
           </FormField>
         </div>
@@ -133,23 +120,33 @@ function RegisterContent() {
           <div className="rounded-card border border-ink/15 bg-parchment p-5 space-y-3">
             <div className="flex justify-between border-b border-ink/10 pb-2">
               <span className="text-sm text-ink/60">Name</span>
-              <span className="text-sm font-medium text-ink">{(data.fullName as string) || "—"}</span>
+              <span className="text-sm font-medium text-ink">{(data.fullName as string) || "\u2014"}</span>
             </div>
             <div className="flex justify-between border-b border-ink/10 pb-2">
               <span className="text-sm text-ink/60">Email</span>
-              <span className="text-sm font-medium text-ink">{(data.email as string) || "—"}</span>
+              <span className="text-sm font-medium text-ink">{(data.email as string) || "\u2014"}</span>
             </div>
             <div className="flex justify-between border-b border-ink/10 pb-2">
               <span className="text-sm text-ink/60">Phone</span>
-              <span className="text-sm font-medium text-ink">{(data.phone as string) || "—"}</span>
+              <span className="text-sm font-medium text-ink">{(data.phone as string) || "\u2014"}</span>
             </div>
             <div className="flex justify-between border-b border-ink/10 pb-2">
               <span className="text-sm text-ink/60">ID Number</span>
-              <span className="text-sm font-medium text-ink">{(data.idNumber as string) || "—"}</span>
+              <span className="text-sm font-medium text-ink">{(data.idNumber as string) || "\u2014"}</span>
+            </div>
+            <div className="flex justify-between border-b border-ink/10 pb-2">
+              <span className="text-sm text-ink/60">ID Type</span>
+              <span className="text-sm font-medium text-ink">
+                {(data.idType as string) === "passport"
+                  ? "Passport"
+                  : (data.idType as string) === "drivers_license"
+                  ? "Driver's License"
+                  : "National ID"}
+              </span>
             </div>
             <div className="flex justify-between border-b border-ink/10 pb-2">
               <span className="text-sm text-ink/60">Vehicle</span>
-              <span className="text-sm font-medium text-ink">{(data.vehiclePlate as string) || "None"}</span>
+              <span className="text-sm font-medium text-ink">{(data.vehiclePlate as string) || "N/A"}</span>
             </div>
           </div>
         </div>
@@ -163,25 +160,31 @@ function RegisterContent() {
 
     try {
       const email = data.email as string;
+      const fullName = data.fullName as string;
+      const phone = data.phone as string;
+      const idNumber = data.idNumber as string;
+      const idType = data.idType as string;
+      const vehiclePlate = (data.vehiclePlate as string) || "N/A";
 
-      // Check if visitor already has an account
-      const { data: existingProfile } = await supabase
-        .from("profiles")
-        .select("id")
+      // Check if visitor already has a profile by email
+      const { data: existingVisitor } = await supabase
+        .from("visitor_profiles")
+        .select("id, user_id")
         .eq("email", email)
         .single();
 
-      let userId = existingProfile?.id;
+      let userId = existingVisitor?.user_id;
+      let visitorProfileId = existingVisitor?.id;
 
-      if (!existingProfile) {
-        // Create new account with a random password
-        const tempPassword = "visitor-" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+      if (!existingVisitor) {
+        // Create a new auth account with a generated password (visitor doesn't log in)
+        const tempPassword = generateRandomPassword();
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email,
           password: tempPassword,
           options: {
             data: {
-              full_name: data.fullName,
+              full_name: fullName,
               role: "visitor",
             },
           },
@@ -195,71 +198,83 @@ function RegisterContent() {
 
         userId = authData.user?.id;
 
-        // Manually create profile (triggers removed)
-        if (userId) {
-          await supabase.from("profiles").upsert({
-            id: userId,
-            full_name: data.fullName as string,
-            email,
-            role: "visitor",
-          }, { onConflict: "id" });
+        if (!userId) {
+          setError("Failed to create account. Please try again.");
+          setSubmitting(false);
+          return;
         }
+
+        // Create profile
+        const { error: profileInsertError } = await supabase.from("profiles").insert({
+          id: userId,
+          full_name: fullName,
+          email,
+          phone: phone || null,
+          role: "visitor",
+        });
+
+        if (profileInsertError) {
+          console.error("Profile insert error:", profileInsertError);
+          setError("Failed to create profile: " + profileInsertError.message);
+          setSubmitting(false);
+          return;
+        }
+
+        // Create visitor profile
+        const { data: newVisitorProfile, error: visitorProfileError } = await supabase
+          .from("visitor_profiles")
+          .insert({
+            user_id: userId,
+            full_name: fullName,
+            email,
+            phone: phone || null,
+            id_number: idNumber || null,
+          })
+          .select("id")
+          .single();
+
+        if (visitorProfileError) {
+          console.error("Visitor profile error:", visitorProfileError);
+          setError("Failed to create visitor profile: " + visitorProfileError.message);
+          setSubmitting(false);
+          return;
+        }
+
+        visitorProfileId = newVisitorProfile.id;
+      } else {
+        // Update existing visitor profile with new info
+        await supabase
+          .from("visitor_profiles")
+          .update({
+            full_name: fullName,
+            phone: phone || null,
+            id_number: idNumber || null,
+          })
+          .eq("id", existingVisitor.id);
       }
 
-      if (!userId) {
-        setError("Failed to create account. Please try again.");
+      if (!visitorProfileId) {
+        setError("Failed to create visitor profile. Please try again.");
         setSubmitting(false);
         return;
       }
 
-      // Upsert visitor profile
-      const visitorProfileData: Record<string, unknown> = {
-        user_id: userId,
-        full_name: data.fullName,
-        email,
-        phone: data.phone || null,
-        id_number: data.idNumber || null,
-      };
-
-      // Upload photo if provided
-      if (data.photoFile instanceof File) {
-        const fileExt = data.photoFile.name.split(".").pop();
-        const filePath = `visitor-photos/${userId}/${Date.now()}.${fileExt}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from("visitor-photos")
-          .upload(filePath, data.photoFile);
-
-        if (!uploadError) {
-          const { data: urlData } = supabase.storage
-            .from("visitor-photos")
-            .getPublicUrl(filePath);
-          visitorProfileData.photo_url = urlData.publicUrl;
-        }
-      }
-
-      const { error: profileError } = await supabase
-        .from("visitor_profiles")
-        .upsert(visitorProfileData, { onConflict: "user_id" });
-
-      if (profileError) {
-        console.error("Profile error:", profileError);
-      }
-
-      // Add vehicle if provided
-      if (data.vehiclePlate && userId) {
-        // First get the visitor profile ID
-        const { data: vp } = await supabase
-          .from("visitor_profiles")
+      // Add vehicle if provided and not N/A
+      if (vehiclePlate && vehiclePlate.toUpperCase() !== "N/A" && visitorProfileId) {
+        // Check if vehicle already exists for this visitor
+        const { data: existingVehicle } = await supabase
+          .from("vehicles")
           .select("id")
-          .eq("user_id", userId)
+          .eq("visitor_id", visitorProfileId)
+          .eq("registration_number", vehiclePlate)
           .single();
 
-        if (vp) {
-          await supabase.from("vehicles").upsert({
-            visitor_id: vp.id,
-            registration_number: data.vehiclePlate as string,
-          }, { onConflict: "registration_number" });
+        if (!existingVehicle) {
+          const { error: vehicleError } = await supabase.from("vehicles").insert({
+            visitor_id: visitorProfileId,
+            registration_number: vehiclePlate,
+          });
+          if (vehicleError) console.error("Vehicle error:", vehicleError);
         }
       }
 
@@ -273,35 +288,44 @@ function RegisterContent() {
 
         if (invitation) {
           // Update invitation with visitor info
-          await supabase
+          const { error: invUpdateError } = await supabase
             .from("invitations")
             .update({
-              visitor_id: userId,
-              visitor_name: data.fullName as string,
+              visitor_id: visitorProfileId,
+              visitor_name: fullName,
               status: "accepted",
             })
             .eq("id", invitationId);
 
+          if (invUpdateError) {
+            console.error("Invitation update error:", invUpdateError);
+          }
+
           // Create visit record
           const room = invitation.room as { id: string } | null;
           if (room) {
-            // Generate a visit code
-            const visitCode = 'VF-' + Math.random().toString(36).substring(2, 6).toUpperCase();
-            await supabase.from("visits").insert({
+            const { error: visitError } = await supabase.from("visits").insert({
               invitation_id: invitationId,
-              visit_code: visitCode,
-              visitor_id: userId,
+              visit_code: invitation.visit_code,
+              visitor_id: visitorProfileId,
               resident_id: invitation.resident_id,
               room_id: room.id,
               status: "authorized",
             });
+            if (visitError) {
+              console.error("Visit create error:", visitError);
+              setError("Failed to create visit record: " + visitError.message);
+              setSubmitting(false);
+              return;
+            }
           }
 
-          // Add to favourites if not already there
-          await supabase.from("favourite_visitors").upsert({
+          // Add to favourites
+          const { error: favError } = await supabase.from("favourite_visitors").insert({
             resident_id: invitation.resident_id,
-            visitor_id: userId,
-          }, { onConflict: "resident_id,visitor_id" });
+            visitor_id: visitorProfileId,
+          }).select();
+          if (favError) console.error("Favourite error:", favError);
         }
       }
 

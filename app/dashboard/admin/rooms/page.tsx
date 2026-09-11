@@ -83,7 +83,7 @@ export default function RoomsPage() {
   const filtered = rooms.filter((r) => {
     const matchBlock = !blockFilter || r.block === blockFilter;
     const matchStatus = !statusFilter || (statusFilter === "occupied" ? r.is_occupied : !r.is_occupied);
-    const matchSearch = !search || `Block ${r.block} Room ${r.room_number}`.toLowerCase().includes(search.toLowerCase()) ||
+    const matchSearch = !search || `Block ${r.block} Room ${r.room_number.replace(/^[AB]-/, "")}`.toLowerCase().includes(search.toLowerCase()) ||
       r.resident?.profile?.full_name?.toLowerCase().includes(search.toLowerCase());
     return matchBlock && matchStatus && matchSearch;
   });
@@ -136,7 +136,7 @@ export default function RoomsPage() {
             }`}
           >
             <div className="flex items-center justify-between">
-              <span className="font-mono text-lg font-medium text-ink">Block {room.block}-{room.room_number}</span>
+              <span className="font-mono text-lg font-medium text-ink">Block {room.block} — Room {room.room_number.replace(/^[AB]-/, "")}</span>
               <span className={`text-xs font-medium ${room.is_occupied ? "text-sage" : "text-ink/40"}`}>
                 {room.is_occupied ? "Occupied" : "Vacant"}
               </span>
@@ -155,7 +155,7 @@ export default function RoomsPage() {
       )}
 
       {/* Detail SlideOver */}
-      <SlideOver open={!!selectedRoom} onClose={() => setSelectedRoom(null)} title={`Block ${selectedRoom?.block}-${selectedRoom?.room_number}`}>
+      <SlideOver open={!!selectedRoom} onClose={() => setSelectedRoom(null)} title={`Block ${selectedRoom?.block} — Room ${selectedRoom?.room_number.replace(/^[AB]-/, "")}`}>
         {selectedRoom && (
           <div className="space-y-6">
             <dl className="grid grid-cols-2 gap-4 text-sm">
@@ -203,7 +203,7 @@ export default function RoomsPage() {
         onClose={() => setDeleteTarget(null)}
         onConfirm={() => { if (deleteTarget) handleDelete(deleteTarget); setDeleteTarget(null); }}
         title="Delete Room"
-        message={`Delete Block ${deleteTarget?.block} Room ${deleteTarget?.room_number}? This cannot be undone.`}
+        message={`Delete Block ${deleteTarget?.block} — Room ${deleteTarget?.room_number.replace(/^[AB]-/, "")}? This cannot be undone.`}
         confirmLabel="Delete"
         variant="danger"
       />

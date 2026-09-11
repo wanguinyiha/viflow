@@ -106,7 +106,7 @@ export default function AdminVisitsPage() {
 
   function getRoomLabel(visit: VisitRow): string {
     if (!visit.room) return "\u2014";
-    return `${visit.room.block} ${visit.room.room_number}`;
+    return `${visit.room.block} — ${visit.room.room_number.replace(/^[AB]-/, "")}`;
   }
 
   const columns: Column<VisitRow>[] = [
@@ -184,8 +184,9 @@ export default function AdminVisitsPage() {
               className="w-auto"
             >
               <option value="">All statuses</option>
-              <option value="checked_in">Checked In</option>
-              <option value="checked_out">Checked Out</option>
+              <option value="authorized">Pending Approval</option>
+              <option value="approved">Active</option>
+              <option value="checked_out">Completed</option>
               <option value="denied">Denied</option>
             </Select>
           }

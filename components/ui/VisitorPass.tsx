@@ -1,5 +1,3 @@
-import QRCode from "./QRCode";
-
 export default function VisitorPass({
   visitorName,
   residentName,
@@ -7,7 +5,6 @@ export default function VisitorPass({
   room,
   visitDate,
   validFrom,
-  validUntil,
   visitCode,
   className = "",
 }: {
@@ -17,7 +14,6 @@ export default function VisitorPass({
   room: string;
   visitDate: string;
   validFrom: string;
-  validUntil: string;
   visitCode: string;
   className?: string;
 }) {
@@ -34,7 +30,7 @@ export default function VisitorPass({
           <p className="text-sm text-parchment/70">Host: {residentName}</p>
           <p className="mt-2 text-sm text-parchment/50">{visitDate}</p>
           <p className="font-mono text-xs text-parchment/40">
-            Valid: {validFrom} — {validUntil}
+            Arrival: {validFrom}
           </p>
 
           <div className="mt-5 flex items-end justify-between">
@@ -55,13 +51,11 @@ export default function VisitorPass({
             </span>
           </div>
         </div>
-        <div className="flex items-center justify-between bg-ink-light px-6 py-3 text-[11px] font-mono text-parchment/60">
-          <span>{visitCode}</span>
-          <span>Valid today only</span>
+        <div className="bg-ink-light px-6 py-4 text-center">
+          <p className="font-mono text-[11px] uppercase text-parchment/50 mb-1">Your Visit Code</p>
+          <p className="font-mono text-2xl font-bold tracking-wider text-parchment">{visitCode}</p>
+          <p className="font-mono text-[11px] text-parchment/40 mt-1">Show this code at the gate</p>
         </div>
-      </div>
-      <div className="mt-4 flex justify-center">
-        <QRCode value={visitCode} size={180} />
       </div>
     </div>
   );

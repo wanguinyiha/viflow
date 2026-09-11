@@ -1,23 +1,51 @@
 const faqs = [
   {
-    q: "Does a visitor need the app to enter?",
-    a: "They need the QR pass sent to their phone after a resident authorizes their visit. Building a profile takes a few minutes the first time; after that, it's just responding to an invitation.",
+    q: "What is ViFlow?",
+    a: "ViFlow is a secure visitor management system designed to make hostel visitor registration, verification, check-in, and check-out faster and more organized.",
   },
   {
-    q: "Can a resident approve a visit without being at the gate?",
-    a: "Yes. Authorization happens from the resident's phone before the visitor arrives, so the guard only needs to confirm the pass and check an ID.",
+    q: "Do I need to register every time I visit?",
+    a: "No. Once your visitor information has been registered, you can avoid repeatedly entering the same basic information. However, every visit still requires a new invitation from the resident.",
   },
   {
-    q: "What stops someone from reusing an old QR pass?",
-    a: "Each pass is tied to one visit, one visitor, one resident and one room, and expires after that visit. A scanned or expired pass won't verify again.",
+    q: "Can I enter the hostel without an invitation?",
+    a: "No. A valid invitation is required before a visitor can be approved for entry.",
   },
   {
-    q: "Who can see a visitor's personal information?",
-    a: "Visitor profiles are visible to administrators for verification and to guards only at the point of check-in. Residents see visit details, not the visitor's stored ID documents.",
+    q: "Does being a previous visitor give me permanent access?",
+    a: "No. Previous visits or being a favourite visitor does not give permanent access. A new invitation is required for every visit.",
   },
   {
-    q: "What happens if a visitor never checks out?",
-    a: "Administrators can see open visits on record and close them out, so the hostel's log stays accurate even if a guard misses a checkout at a busy gate.",
+    q: "How does the guard verify me?",
+    a: "The guard checks your visit invitation and verifies the relevant visitor and resident information before approving your entry.",
+  },
+  {
+    q: "What happens after I am approved?",
+    a: "The guard checks you in, and your visit becomes an active visit in the system. The relevant resident and authorized hostel administrators can see the visit status.",
+  },
+  {
+    q: "What happens when I leave?",
+    a: "The guard checks you out, and the system records the check-out time and completes your visit history.",
+  },
+  {
+    q: "Is my information secure?",
+    a: "ViFlow is designed so that visitor information is only available to authorized users who need it for visitor management and verification.",
+  },
+  {
+    q: "Can I visit a different resident using the same invitation?",
+    a: "No. An invitation is created for a specific resident and visit. You need a new invitation for a different visit or resident.",
+  },
+  {
+    q: "Can I have multiple visits?",
+    a: "Yes. Your previous visits are retained as part of your visit history, while each new visit still requires its own invitation.",
+  },
+  {
+    q: "Can I register my vehicle?",
+    a: "Yes, where vehicle information is required. ViFlow keeps vehicle history so previous vehicle information does not have to be overwritten.",
+  },
+  {
+    q: "Who can see my visitor information?",
+    a: "Access to visitor information is restricted according to the user's role and what they need to perform their responsibilities within ViFlow.",
   },
 ];
 
@@ -25,7 +53,7 @@ export default function Faq() {
   return (
     <section id="faq" className="border-t border-ink/10 bg-parchment-dim">
       <div className="mx-auto max-w-3xl px-6 py-20 md:px-10 md:py-28">
-        <h2 className="font-display text-3xl italic text-ink sm:text-4xl">Questions from wardens</h2>
+        <h2 className="font-display text-3xl italic text-ink sm:text-4xl">Frequently Asked Questions</h2>
 
         <div className="mt-10 divide-y divide-ink/10 border-t border-ink/10">
           {faqs.map((item) => (

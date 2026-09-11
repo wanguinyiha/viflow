@@ -1,19 +1,19 @@
 const roles = [
   {
-    name: "Visitors",
-    body: "Build a profile once, respond to invitations, and carry your QR pass — no re-registering at the gate you've already visited a dozen times.",
+    name: "Residents",
+    body: "Invite visitors quickly without repeatedly entering the same information. Track your active visitors and view your visit history.",
   },
   {
-    name: "Residents",
-    body: "Invite the people you're expecting and authorize each visit from your phone. No walking down to the gate to vouch for a guest.",
+    name: "Visitors",
+    body: "Receive invitations by email, provide your information once, and enjoy a faster and more organized entry process on future visits.",
   },
   {
     name: "Guards",
-    body: "Scan a code, get a clear verdict. Visitor, visit, resident and room are checked together, so you're not making judgment calls on your own.",
+    body: "Verify visitors quickly, confirm their invitation and resident details, and manage check-ins and check-outs from one place.",
   },
   {
-    name: "Administrators",
-    body: "Manage residents, rooms and policy in one place, and pull up any visit on record instead of paging through a logbook.",
+    name: "Hostel Administrators",
+    body: "Manage residents, rooms, visitors, guards, invitations, visits, and security activity while maintaining a clear record of what happens at the gate.",
   },
 ];
 
@@ -23,7 +23,7 @@ export default function Roles() {
       <div className="mx-auto max-w-6xl px-6 py-20 md:px-10 md:py-28">
         <div className="max-w-[46ch]">
           <h2 className="font-display text-3xl italic text-ink sm:text-4xl">
-            Built around four people at the gate.
+            Who Is ViFlow For?
           </h2>
         </div>
 

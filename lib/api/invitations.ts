@@ -44,13 +44,32 @@ export async function createInvitation(invitation: {
   visitor_id?: string;
   room_id: string;
   visit_start: string;
-  visit_end: string;
+  visit_end?: string;
   reason?: string;
   vehicle_registration?: string;
 }) {
+  // Append local timezone offset to datetime-local values so they store correctly as TIMESTAMPTZ
+  const tzOffset = (() => {
+    const offset = -new Date().getTimezoneOffset();
+    const sign = offset >= 0 ? "+" : "-";
+    const hours = String(Math.floor(Math.abs(offset) / 60)).padStart(2, "0");
+    const minutes = String(Math.abs(offset) % 60).padStart(2, "0");
+    return `${sign}${hours}:${minutes}`;
+  })();
+
+  const enriched = {
+    ...invitation,
+    visit_start: invitation.visit_start && !invitation.visit_start.includes("Z") && !invitation.visit_start.includes("+") && !invitation.visit_start.includes("-", 10)
+      ? invitation.visit_start + ":00" + tzOffset
+      : invitation.visit_start,
+    visit_end: invitation.visit_end && !invitation.visit_end.includes("Z") && !invitation.visit_end.includes("+") && !invitation.visit_end.includes("-", 10)
+      ? invitation.visit_end + ":00" + tzOffset
+      : invitation.visit_end,
+  };
+
   const { data, error } = await supabase
     .from("invitations")
-    .insert(invitation)
+    .insert(enriched)
     .select()
     .single();
   return { data: data as Invitation | null, error };

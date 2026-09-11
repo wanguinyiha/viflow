@@ -34,7 +34,7 @@ export async function GET(request: Request) {
           supabaseAdmin.from("profiles").select("*", { count: "exact", head: true }).eq("role", "visitor"),
           supabaseAdmin.from("resident_profiles").select("*", { count: "exact", head: true }).eq("status", "active"),
           supabaseAdmin.from("profiles").select("*", { count: "exact", head: true }).eq("role", "guard"),
-          supabaseAdmin.from("visits").select("*", { count: "exact", head: true }).eq("status", "checked_in"),
+          supabaseAdmin.from("visits").select("*", { count: "exact", head: true }).in("status", ["approved"]),
           supabaseAdmin.from("visits").select("*", { count: "exact", head: true }).gte("checked_in_at", todayIso),
           supabaseAdmin.from("rooms").select("id, is_occupied"),
           supabaseAdmin.from("rooms").select("*", { count: "exact", head: true }).eq("is_occupied", true),

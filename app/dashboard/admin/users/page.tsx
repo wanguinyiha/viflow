@@ -113,8 +113,7 @@ export default function UsersPage() {
     try {
       const res = await fetch("/api/admin/data?type=rooms");
       const data = await res.json();
-      const unoccupied = (data.rooms ?? []).filter((r: any) => !r.is_occupied);
-      setAvailableRooms(unoccupied);
+      setAvailableRooms(data.rooms ?? []);
     } catch {
       setAvailableRooms([]);
     }
@@ -280,7 +279,7 @@ export default function UsersPage() {
                   <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${ROLE_COLORS[u.role] ?? "bg-ink/10 text-ink"}`}>{u.role}</span>
                 </td>
                 <td className="px-4 py-3 text-ink/60">
-                  {u.role === "resident" && u.rooms ? `Block ${u.rooms.block} Room ${u.rooms.room_number}` :
+                  {u.role === "resident" && u.rooms ? `Block ${u.rooms.block} — Room ${u.rooms.room_number.replace(/^[AB]-/, "")}` :
                    u.role === "resident" ? <span className="text-brass text-xs font-medium">Unassigned</span> :
                    u.role === "visitor" ? (
                     <span className={`text-xs font-medium ${u.id_verified ? "text-sage" : "text-ink/40"}`}>
@@ -348,8 +347,8 @@ export default function UsersPage() {
                       {availableRooms
                         .filter((r) => r.block === block)
                         .map((room) => (
-                          <option key={room.id} value={room.id}>
-                            Block {room.block} — Room {room.room_number}
+                          <option key={room.id} value={room.id} disabled={room.is_occupied}>
+                            Block {room.block} — Room {room.room_number.replace(/^[AB]-/, "")}{room.is_occupied ? " (Occupied)" : ""}
                           </option>
                         ))}
                     </optgroup>
@@ -403,7 +402,7 @@ export default function UsersPage() {
               <div><span className="text-ink/50">Created</span><p className="font-medium text-ink">{new Date(selectedUser.created_at).toLocaleDateString()}</p></div>
               {selectedUser.role === "resident" && (
                 <div><span className="text-ink/50">Room</span><p className="font-medium text-ink">
-                  {selectedUser.rooms ? `Block ${selectedUser.rooms.block} Room ${selectedUser.rooms.room_number}` : "Unassigned"}
+                  {selectedUser.rooms ? `Block ${selectedUser.rooms.block} — Room ${selectedUser.rooms.room_number.replace(/^[AB]-/, "")}` : "Unassigned"}
                 </p></div>
               )}
               {selectedUser.role === "visitor" && (

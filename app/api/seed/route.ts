@@ -60,15 +60,15 @@ export async function POST() {
   }
   log.push(`Users: ${Object.keys(userIds).length} ready`);
 
-  // 2. Rooms: Block A (1-10), Block B (1-10)
+  // 2. Rooms: Block A (A-01 to A-10), Block B (B-01 to B-10)
   const rooms: { room_number: string; block: string; floor: number; is_occupied: boolean }[] = [];
 
   for (const block of ["A", "B"]) {
     for (let i = 1; i <= 10; i++) {
       rooms.push({
-        room_number: String(i),
+        room_number: `${block}-${String(i).padStart(2, "0")}`,
         block,
-        floor: block === "A" ? 1 : 2,
+        floor: i <= 5 ? 1 : 2,
         is_occupied: false,
       });
     }
@@ -77,10 +77,10 @@ export async function POST() {
   for (const room of rooms) {
     await supabaseAdmin.from("rooms").upsert(room, { onConflict: "room_number,block", ignoreDuplicates: true });
   }
-  log.push(`Rooms: ${rooms.length} (Block A: 1-10, Block B: 1-10)`);
+  log.push(`Rooms: ${rooms.length} (Block A: A-01 to A-10, Block B: B-01 to B-10)`);
 
-  // 3. Get room A-4 ID for demo resident
-  const { data: roomA4 } = await supabaseAdmin.from("rooms").select("id").eq("block", "A").eq("room_number", "4").single();
+  // 3. Get room A-04 ID for demo resident
+  const { data: roomA4 } = await supabaseAdmin.from("rooms").select("id").eq("block", "A").eq("room_number", "A-04").single();
 
   // 4. Create resident profile for demo resident
   if (userIds.resident && roomA4) {
@@ -146,8 +146,8 @@ export async function POST() {
   log.push(`Extra visitors: ${visitorProfileIds.length}`);
 
   // 7. Get room IDs
-  const { data: roomA1 } = await supabaseAdmin.from("rooms").select("id").eq("block", "A").eq("room_number", "1").single();
-  const { data: roomB2 } = await supabaseAdmin.from("rooms").select("id").eq("block", "B").eq("room_number", "2").single();
+  const { data: roomA1 } = await supabaseAdmin.from("rooms").select("id").eq("block", "A").eq("room_number", "A-01").single();
+  const { data: roomB2 } = await supabaseAdmin.from("rooms").select("id").eq("block", "B").eq("room_number", "B-02").single();
 
   // 8. Invitations
   const invitations = [

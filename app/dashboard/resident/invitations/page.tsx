@@ -45,8 +45,7 @@ export default function InvitationsPage() {
   const columns: Column<Invitation>[] = [
     { key: "visitor_email", label: "Visitor", render: (row) => row.visitor?.full_name || row.visitor_email },
     { key: "status", label: "Status", render: (row) => <StatusBadge status={row.status} type="invitation" /> },
-    { key: "visit_start", label: "Valid From", render: (row) => new Date(row.visit_start).toLocaleDateString() },
-    { key: "visit_end", label: "Valid Until", render: (row) => new Date(row.visit_end).toLocaleDateString() },
+    { key: "visit_start", label: "Arrival Date", render: (row) => new Date(row.visit_start).toLocaleDateString() },
     { key: "created_at", label: "Created", render: (row) => new Date(row.created_at).toLocaleDateString() },
     { key: "reason", label: "Reason" },
   ];

@@ -11,7 +11,7 @@ interface InvitationData {
   visitor_email: string;
   visitor_name: string | null;
   visit_start: string;
-  visit_end: string;
+  visit_end: string | null;
   reason: string | null;
   vehicle_registration: string | null;
   resident: { full_name: string } | null;
@@ -71,9 +71,8 @@ export default function InvitePage() {
 
   const now = new Date();
   const start = new Date(invitation.visit_start);
-  const end = new Date(invitation.visit_end);
 
-  if (invitation.status === "expired" || end < now) {
+  if (invitation.status === "expired") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-parchment px-6">
         <div className="max-w-md text-center">
@@ -181,19 +180,13 @@ export default function InvitePage() {
             <div className="flex justify-between border-b border-ink/10 pb-3">
               <span className="text-sm text-ink/60">Room</span>
               <span className="text-sm font-medium text-ink">
-                Block {invitation.room?.block} — Room {invitation.room?.room_number}
+                Block {invitation.room?.block} — Room {invitation.room?.room_number.replace(/^[AB]-/, "")}
               </span>
             </div>
             <div className="flex justify-between border-b border-ink/10 pb-3">
-              <span className="text-sm text-ink/60">Visit from</span>
+              <span className="text-sm text-ink/60">Arrival Date</span>
               <span className="text-sm font-medium text-ink">
                 {start.toLocaleDateString()} {start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-              </span>
-            </div>
-            <div className="flex justify-between border-b border-ink/10 pb-3">
-              <span className="text-sm text-ink/60">Visit until</span>
-              <span className="text-sm font-medium text-ink">
-                {end.toLocaleDateString()} {end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
               </span>
             </div>
             {invitation.reason && (
@@ -230,7 +223,7 @@ export default function InvitePage() {
         </div>
 
         <p className="mt-6 text-center text-xs text-ink/40">
-          This invitation is valid only for the specified visit period.
+          The guard will check you in and out at the gate.
           A new invitation is required for future visits.
         </p>
       </div>

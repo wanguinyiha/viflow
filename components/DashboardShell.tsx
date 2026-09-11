@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@/lib/context/AuthContext";
 
 type NavItem = { label: string; href: string };
 type NavGroup = { type: "group"; label: string; items: NavItem[] };
@@ -9,12 +11,6 @@ type NavSingle = { type: "single"; label: string; href: string };
 type NavEntry = NavSingle | NavGroup;
 
 const navByRole: Record<string, NavEntry[]> = {
-  visitor: [
-    { type: "single", label: "Overview", href: "/dashboard/visitor" },
-    { type: "single", label: "My Profile", href: "/dashboard/visitor/profile" },
-    { type: "single", label: "Invitations", href: "/dashboard/visitor/invitations" },
-    { type: "single", label: "My Visits", href: "/dashboard/visitor/visits" },
-  ],
   resident: [
     { type: "single", label: "Dashboard", href: "/dashboard/resident" },
     { type: "single", label: "Create Invitation", href: "/dashboard/resident/invitations/new" },
@@ -23,6 +19,7 @@ const navByRole: Record<string, NavEntry[]> = {
     { type: "single", label: "Invitations", href: "/dashboard/resident/invitations" },
     { type: "single", label: "Active Visits", href: "/dashboard/resident/active" },
     { type: "single", label: "Visit History", href: "/dashboard/resident/history" },
+    { type: "single", label: "Notifications", href: "/notifications" },
     { type: "single", label: "Profile", href: "/dashboard/resident/profile" },
     { type: "single", label: "Settings", href: "/dashboard/resident/settings" },
   ],
@@ -32,6 +29,7 @@ const navByRole: Record<string, NavEntry[]> = {
     { type: "single", label: "Active Visitors", href: "/dashboard/guard/active" },
     { type: "single", label: "Visit Log", href: "/dashboard/guard/log" },
     { type: "single", label: "Activity Review", href: "/dashboard/guard/activity" },
+    { type: "single", label: "Notifications", href: "/notifications" },
     { type: "single", label: "Profile", href: "/dashboard/guard/profile" },
     { type: "single", label: "Settings", href: "/dashboard/guard/settings" },
   ],
@@ -66,6 +64,7 @@ const navByRole: Record<string, NavEntry[]> = {
         { label: "Audit Logs", href: "/dashboard/admin/audit" },
       ],
     },
+    { type: "single", label: "Notifications", href: "/notifications" },
     { type: "single", label: "Reports", href: "/dashboard/admin/reports" },
     { type: "single", label: "Settings", href: "/dashboard/admin/settings" },
   ],
@@ -83,13 +82,37 @@ export default function DashboardShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const { user: authUser } = useAuth();
   const items = navByRole[role];
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     setSidebarOpen(false);
   }, [pathname]);
+
+  // Fetch unread notification count
+  useEffect(() => {
+    if (!authUser?.id) return;
+
+    const userId = authUser.id;
+
+    async function fetchCount() {
+      const { count } = await supabase
+        .from("notifications")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .eq("read", false);
+      setUnreadCount(count ?? 0);
+    }
+
+    fetchCount();
+
+    // Poll every 30 seconds
+    const interval = setInterval(fetchCount, 30000);
+    return () => clearInterval(interval);
+  }, [authUser]);
 
   // Auto-expand groups that contain the active page
   useEffect(() => {
@@ -263,12 +286,17 @@ export default function DashboardShell({
             <div className="flex items-center justify-between">
               <div />
               <div className="flex items-center gap-4">
-                <button className="focus-ring relative rounded-sm p-1 text-ink/40 hover:text-ink" aria-label="Notifications">
+                <a href="/notifications" className="focus-ring relative rounded-sm p-1 text-ink/40 hover:text-ink" aria-label="Notifications">
                   <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
                     <path d="M10 2a5 5 0 00-5 5v3l-1.3 2.6a.5.5 0 00.45.7h11.7a.5.5 0 00.45-.7L15 10V7a5 5 0 00-5-5z" />
                     <path d="M8 14a2 2 0 004 0" />
                   </svg>
-                </button>
+                  {unreadCount > 0 && (
+                    <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-brass text-[10px] font-bold text-ink">
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </span>
+                  )}
+                </a>
                 <div className="text-right">
                   <p className="text-sm font-medium text-ink">{personName}</p>
                   <p className="text-xs text-ink/50 capitalize">{roleLabel}</p>

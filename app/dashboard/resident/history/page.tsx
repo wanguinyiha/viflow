@@ -43,7 +43,7 @@ export default function VisitHistoryPage() {
   const columns: Column<Visit>[] = [
     { key: "created_at", label: "Date", render: (row) => new Date(row.created_at).toLocaleDateString(), sortable: true },
     { key: "visitor", label: "Visitor", render: (row) => (row.visitor as any)?.full_name ?? "—" },
-    { key: "room", label: "Room", render: (row) => (row.room as any) ? `${(row.room as any).room_number}, ${(row.room as any).block}` : "—" },
+    { key: "room", label: "Room", render: (row) => (row.room as any) ? `Block ${(row.room as any).block} — Room ${((row.room as any).room_number as string).replace(/^[AB]-/, "")}` : "—" },
     { key: "checked_in_at", label: "Check In", render: (row) => row.checked_in_at ? new Date(row.checked_in_at).toLocaleTimeString() : "—" },
     { key: "checked_out_at", label: "Check Out", render: (row) => row.checked_out_at ? new Date(row.checked_out_at).toLocaleTimeString() : "—" },
     { key: "status", label: "Status", render: (row) => <StatusBadge status={row.status} type="visit" /> },
@@ -69,9 +69,9 @@ export default function VisitHistoryPage() {
           filters={
             <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-auto">
               <option value="">All statuses</option>
-              <option value="checked_in">Checked In</option>
-              <option value="checked_out">Checked Out</option>
-              <option value="authorized">Authorized</option>
+              <option value="authorized">Pending Approval</option>
+              <option value="approved">Active</option>
+              <option value="checked_out">Completed</option>
               <option value="denied">Denied</option>
             </Select>
           }

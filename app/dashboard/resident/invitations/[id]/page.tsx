@@ -82,12 +82,8 @@ export default function InvitationDetailPage() {
             <StatusBadge status={invitation.status} type="invitation" />
           </div>
           <div className="flex justify-between border-b border-ink/10 pb-3">
-            <span className="text-sm text-ink/60">Valid From</span>
+            <span className="text-sm text-ink/60">Arrival Date</span>
             <span className="text-sm text-ink">{new Date(invitation.visit_start).toLocaleString()}</span>
-          </div>
-          <div className="flex justify-between border-b border-ink/10 pb-3">
-            <span className="text-sm text-ink/60">Valid Until</span>
-            <span className="text-sm text-ink">{new Date(invitation.visit_end).toLocaleString()}</span>
           </div>
           {invitation.reason && (
             <div className="flex justify-between border-b border-ink/10 pb-3">
@@ -108,7 +104,7 @@ export default function InvitationDetailPage() {
         </div>
 
         <p className="mt-6 text-sm text-ink/40">
-          This invitation is valid only for the specified visit period. A new invitation is required for future visits.
+          The guard will check out the visitor when they leave. A new invitation is required for future visits.
         </p>
       </div>
 

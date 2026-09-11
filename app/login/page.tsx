@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import AuthShell from "@/components/AuthShell";
 import { signIn } from "@/lib/auth";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function Login() {
   const router = useRouter();
@@ -27,14 +28,13 @@ export default function Login() {
       return;
     }
 
-    // Fetch profile to determine role for redirect
-    const { supabase } = await import("@/lib/supabaseClient");
     const userId = data.user?.id;
     if (!userId) {
       setError("Login failed. Please try again.");
       setLoading(false);
       return;
     }
+
     const { data: profile } = await supabase
       .from("profiles")
       .select("role")
@@ -50,14 +50,7 @@ export default function Login() {
       eyebrow="Log in"
       title="Good to see you again."
       subtitle="Visitors, residents, guards and administrators all sign in here."
-      footer={
-        <>
-          New to ViFlow?{" "}
-          <a href="/signup" className="focus-ring rounded-sm font-medium text-ink underline underline-offset-2">
-            Create an account
-          </a>
-        </>
-      }
+      footer={<span />}
     >
       <form onSubmit={handleSubmit} className="space-y-5">
         {error && (
@@ -84,7 +77,7 @@ export default function Login() {
               Password
             </label>
             <a href="/forgot-password" className="focus-ring rounded-sm text-sm text-ink/50 hover:text-ink/80">
-              Forgot?
+              Forgot password?
             </a>
           </div>
           <input

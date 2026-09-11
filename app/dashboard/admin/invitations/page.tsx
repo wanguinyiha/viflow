@@ -21,7 +21,7 @@ interface InvitationRow {
   visitor_name: string;
   room_id: string;
   visit_start: string;
-  visit_end: string;
+  visit_end: string | null;
   reason: string | null;
   vehicle_registration: string | null;
   status: string;
@@ -119,18 +119,10 @@ export default function AdminInvitationsPage() {
     },
     {
       key: "visit_start",
-      label: "Valid From",
+      label: "Arrival Date",
       render: (row) =>
         row.visit_start
           ? new Date(row.visit_start).toLocaleDateString()
-          : "\u2014",
-    },
-    {
-      key: "visit_end",
-      label: "Valid Until",
-      render: (row) =>
-        row.visit_end
-          ? new Date(row.visit_end).toLocaleDateString()
           : "\u2014",
     },
     {
@@ -257,18 +249,10 @@ export default function AdminInvitationsPage() {
               <h3 className="font-display text-lg text-ink">Visit Details</h3>
               <div className="mt-3 grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="text-ink/50">Valid From</span>
+                  <span className="text-ink/50">Arrival Date</span>
                   <p className="font-medium text-ink">
                     {selectedInvitation.visit_start
                       ? new Date(selectedInvitation.visit_start).toLocaleDateString()
-                      : "\u2014"}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-ink/50">Valid Until</span>
-                  <p className="font-medium text-ink">
-                    {selectedInvitation.visit_end
-                      ? new Date(selectedInvitation.visit_end).toLocaleDateString()
                       : "\u2014"}
                   </p>
                 </div>

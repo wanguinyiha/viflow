@@ -6,12 +6,13 @@ import StatCard from "@/components/ui/StatCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/context/AuthContext";
-import type { ResidentStats } from "@/lib/types";
 
 interface RecentVisit {
   id: string;
   status: string;
   created_at: string;
+  checked_in_at: string | null;
+  checked_out_at: string | null;
   visitor: { full_name: string } | null;
   room: { room_number: string; block: string } | null;
 }
@@ -22,7 +23,12 @@ interface RoomAssignment {
 
 export default function ResidentDashboard() {
   const { user: profile, loading: authLoading } = useAuth();
-  const [stats, setStats] = useState<ResidentStats | null>(null);
+  const [stats, setStats] = useState({
+    activeVisitors: 0,
+    maxActiveVisitors: 4,
+    pendingInvitations: 0,
+    totalVisits: 0,
+  });
   const [recentVisits, setRecentVisits] = useState<RecentVisit[]>([]);
   const [roomAssignment, setRoomAssignment] = useState<RoomAssignment | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,9 +48,10 @@ export default function ResidentDashboard() {
         setRoomAssignment(residentProfile as RoomAssignment);
       }
 
-      const [active, pending, recent] = await Promise.all([
-        supabase.from("visits").select("*", { count: "exact", head: true }).eq("resident_id", profile.id).in("status", ["authorized", "checked_in"]),
+      const [active, pending, total, recent] = await Promise.all([
+        supabase.from("visits").select("*", { count: "exact", head: true }).eq("resident_id", profile.id).in("status", ["authorized", "approved"]),
         supabase.from("invitations").select("*", { count: "exact", head: true }).eq("resident_id", profile.id).eq("status", "pending"),
+        supabase.from("visits").select("*", { count: "exact", head: true }).eq("resident_id", profile.id),
         supabase.from("visits").select("*, visitor:visitor_profiles(full_name), room:rooms(room_number, block)").eq("resident_id", profile.id).order("created_at", { ascending: false }).limit(5),
       ]);
 
@@ -52,8 +59,7 @@ export default function ResidentDashboard() {
         activeVisitors: active.count ?? 0,
         maxActiveVisitors: 4,
         pendingInvitations: pending.count ?? 0,
-        upcomingVisits: 0,
-        recentVisits: 0,
+        totalVisits: total.count ?? 0,
       });
 
       setRecentVisits((recent.data ?? []) as RecentVisit[]);
@@ -82,7 +88,7 @@ export default function ResidentDashboard() {
         <div className="mt-4 rounded-card border border-sage/30 bg-sage/5 p-4">
           <p className="text-sm text-ink/60">Your Room</p>
           <p className="font-display text-xl text-ink">
-            Block {roomAssignment.room.block} — Room {roomAssignment.room.room_number}
+            Block {roomAssignment.room.block} — Room {roomAssignment.room.room_number.replace(/^[AB]-/, "")}
           </p>
         </div>
       )}
@@ -96,12 +102,11 @@ export default function ResidentDashboard() {
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="Active Visitors"
-          value={`${stats?.activeVisitors ?? 0} / ${stats?.maxActiveVisitors ?? 4}`}
-          description={stats?.activeVisitors === 4 ? "Max capacity reached" : undefined}
+          value={`${stats.activeVisitors} / ${stats.maxActiveVisitors}`}
+          description={stats.activeVisitors === 4 ? "Max capacity reached" : undefined}
         />
-        <StatCard label="Pending Invitations" value={stats?.pendingInvitations ?? 0} />
-        <StatCard label="Upcoming Visits" value={stats?.upcomingVisits ?? 0} />
-        <StatCard label="Total Visits" value={stats?.recentVisits ?? 0} />
+        <StatCard label="Pending Invitations" value={stats.pendingInvitations} />
+        <StatCard label="Total Visits" value={stats.totalVisits} />
       </div>
 
       <div className="mt-8 flex flex-wrap gap-3">
@@ -123,11 +128,13 @@ export default function ResidentDashboard() {
         <div className="mt-10">
           <h2 className="font-display text-xl text-ink">Recent Visits</h2>
           <div className="mt-4 overflow-hidden rounded-card border border-ink/15">
-            <table className="w-full min-w-[400px] border-collapse text-left">
+            <table className="w-full min-w-[500px] border-collapse text-left">
               <thead>
                 <tr className="border-b border-ink/15 bg-parchment-dim text-sm text-ink/60">
                   <th className="px-4 py-3 font-medium">Date</th>
                   <th className="px-4 py-3 font-medium">Visitor</th>
+                  <th className="px-4 py-3 font-medium">Check In</th>
+                  <th className="px-4 py-3 font-medium">Check Out</th>
                   <th className="px-4 py-3 font-medium">Status</th>
                 </tr>
               </thead>
@@ -136,6 +143,8 @@ export default function ResidentDashboard() {
                   <tr key={v.id} className="border-b border-ink/5 last:border-b-0">
                     <td className="px-4 py-3 font-mono text-sm text-ink/70">{new Date(v.created_at).toLocaleDateString()}</td>
                     <td className="px-4 py-3 text-[15px] text-ink">{v.visitor?.full_name ?? "—"}</td>
+                    <td className="px-4 py-3 font-mono text-sm text-ink/70">{v.checked_in_at ? new Date(v.checked_in_at).toLocaleTimeString() : "—"}</td>
+                    <td className="px-4 py-3 font-mono text-sm text-ink/70">{v.checked_out_at ? new Date(v.checked_out_at).toLocaleTimeString() : "—"}</td>
                     <td className="px-4 py-3"><StatusBadge status={v.status} type="visit" /></td>
                   </tr>
                 ))}

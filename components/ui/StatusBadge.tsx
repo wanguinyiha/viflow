@@ -10,12 +10,19 @@ const invitationStyles: Record<InvitationStatus, string> = {
 
 const visitStyles: Record<VisitStatus, string> = {
   pending: "bg-brass/10 text-brass-dark border-brass/20",
-  authorized: "bg-sage/10 text-sage-dim border-sage/20",
+  authorized: "bg-brass/10 text-brass-dark border-brass/20",
+  approved: "bg-blue-50 text-blue-700 border-blue-200",
   checked_in: "bg-blue-50 text-blue-700 border-blue-200",
   checked_out: "bg-ink/5 text-ink/50 border-ink/10",
   cancelled: "bg-red-50 text-red-600 border-red-200",
   expired: "bg-ink/5 text-ink/50 border-ink/10",
   denied: "bg-red-50 text-red-700 border-red-200",
+};
+
+const visitLabels: Partial<Record<VisitStatus, string>> = {
+  approved: "Active",
+  authorized: "Pending Approval",
+  checked_out: "Completed",
 };
 
 const verificationStyles: Record<VerificationStatus, string> = {
@@ -39,14 +46,21 @@ export function StatusBadge({
   type?: "invitation" | "visit" | "verification" | "role";
 }) {
   let styles = "bg-ink/5 text-ink/50 border-ink/10";
-  if (type === "invitation") styles = invitationStyles[status as InvitationStatus] ?? styles;
-  else if (type === "visit") styles = visitStyles[status as VisitStatus] ?? styles;
-  else if (type === "verification") styles = verificationStyles[status as VerificationStatus] ?? styles;
-  else if (type === "role") styles = roleStyles[status] ?? styles;
+  let label = status.replace(/_/g, " ");
+  if (type === "invitation") {
+    styles = invitationStyles[status as InvitationStatus] ?? styles;
+  } else if (type === "visit") {
+    styles = visitStyles[status as VisitStatus] ?? styles;
+    label = visitLabels[status as VisitStatus] ?? label;
+  } else if (type === "verification") {
+    styles = verificationStyles[status as VerificationStatus] ?? styles;
+  } else if (type === "role") {
+    styles = roleStyles[status] ?? styles;
+  }
 
   return (
     <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 font-mono text-xs uppercase ${styles}`}>
-      {status.replace(/_/g, " ")}
+      {label}
     </span>
   );
 }

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import PageHeader from "@/components/ui/PageHeader";
-import { Input } from "@/components/ui/FormField";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { showToast } from "@/components/ui/Toast";
 import { useAuth } from "@/lib/context/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
@@ -13,10 +13,14 @@ interface VisitResult {
   visit_code: string;
   status: string;
   checked_in_at: string | null;
-  visitor: { full_name: string; photo_url: string | null; id_verified: boolean; email: string } | null;
+  resident_id?: string;
+  is_invitation_fallback?: boolean;
+  invitation_id?: string;
+  room_id?: string;
+  visitor: { full_name: string; photo_url: string | null; id_verified: boolean; email: string; id: string } | null;
   resident: { full_name: string } | null;
   room: { room_number: string; block: string } | null;
-  invitation: { visit_start: string; visit_end: string; status: string; visitor_email: string; reason: string | null; vehicle_registration: string | null } | null;
+  invitation: { visit_start: string; status: string; visitor_email: string; reason: string | null; vehicle_registration: string | null } | null;
   vehicle?: { registration_number: string; make: string | null; model: string | null; color: string | null } | null;
 }
 
@@ -26,18 +30,68 @@ export default function VerifyVisitorPage() {
   const [result, setResult] = useState<VisitResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [actionDone, setActionDone] = useState<string | null>(null);
+  const [denyDialogOpen, setDenyDialogOpen] = useState(false);
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setNotFound(false);
     setResult(null);
+    setActionDone(null);
 
-    const { data } = await supabase
+    const trimmedCode = code.trim().toUpperCase();
+
+    // First try: search visits table
+    let { data } = await supabase
       .from("visits")
-      .select("*, visitor:visitor_profiles(full_name, photo_url, id_verified, email), resident:profiles!visits_resident_id_fkey(full_name), room:rooms(room_number, block), invitation:invitations(visit_start, visit_end, status, visitor_email, reason, vehicle_registration)")
-      .eq("visit_code", code.trim().toUpperCase())
+      .select("*, visitor:visitor_profiles(id, full_name, photo_url, id_verified, email), resident:profiles!visits_resident_id_fkey(full_name), room:rooms(room_number, block), invitation:invitations(visit_start, status, visitor_email, reason, vehicle_registration)")
+      .eq("visit_code", trimmedCode)
       .single();
+
+    // Fallback: search invitations table if visit not found
+    if (!data) {
+      const { data: invitation } = await supabase
+        .from("invitations")
+        .select("*, room:rooms(room_number, block), visitor:visitor_profiles(id, full_name, photo_url, id_verified, email), resident:profiles!invitations_resident_id_fkey(full_name)")
+        .eq("visit_code", trimmedCode)
+        .single();
+
+      if (invitation) {
+        // If visitor_id is null on invitation, try to find visitor profile by email
+        let visitorData = invitation.visitor ?? null;
+        if (!visitorData && invitation.visitor_email) {
+          const { data: vpByEmail } = await supabase
+            .from("visitor_profiles")
+            .select("id, full_name, photo_url, id_verified, email")
+            .eq("email", invitation.visitor_email)
+            .single();
+          visitorData = vpByEmail ?? null;
+        }
+
+        const mappedStatus = invitation.status === "accepted" || invitation.status === "pending" ? "authorized" : invitation.status;
+        data = {
+          id: invitation.id,
+          visit_code: invitation.visit_code,
+          status: mappedStatus,
+          checked_in_at: null,
+          resident_id: invitation.resident_id,
+          is_invitation_fallback: true,
+          invitation_id: invitation.id,
+          room_id: invitation.room_id,
+          visitor: visitorData,
+          resident: invitation.resident ?? null,
+          room: invitation.room ?? null,
+          invitation: {
+            visit_start: invitation.visit_start,
+            status: invitation.status,
+            visitor_email: invitation.visitor_email,
+            reason: invitation.reason,
+            vehicle_registration: invitation.vehicle_registration,
+          },
+        } as any;
+      }
+    }
 
     if (!data) {
       setNotFound(true);
@@ -45,7 +99,7 @@ export default function VerifyVisitorPage() {
       return;
     }
 
-    // Fetch vehicle info if invitation has vehicle_registration
+    // Fetch vehicle info
     let enrichedData = { ...data } as VisitResult;
     if (data.visitor?.id && data.invitation?.vehicle_registration) {
       const { data: vehicle } = await supabase
@@ -63,38 +117,77 @@ export default function VerifyVisitorPage() {
     setLoading(false);
   }
 
-  async function handleAction(action: "check_in" | "check_out" | "deny") {
+  async function handleAction(action: "approve" | "check_out" | "deny") {
     if (!result || !profile) return;
 
-    const statusMap = { check_in: "checked_in", check_out: "checked_out", deny: "denied" };
-    const update: any = { status: statusMap[action] };
-    if (action === "check_in") update.checked_in_at = new Date().toISOString();
-    if (action === "check_out") update.checked_out_at = new Date().toISOString();
+    const isInvitationFallback = !!result.is_invitation_fallback;
+    const now = new Date().toISOString();
 
-    await supabase.from("visits").update(update).eq("id", result.id);
+    if (action === "approve") {
+      if (isInvitationFallback) {
+        if (!result.visitor?.id) {
+          showToast("This visitor has not registered yet. Ask them to complete registration first.", "error");
+          setLoading(false);
+          return;
+        }
+        const { data: visit, error: visitErr } = await supabase.from("visits").insert({
+          invitation_id: result.invitation_id,
+          visit_code: result.visit_code,
+          visitor_id: result.visitor.id,
+          resident_id: result.resident_id,
+          room_id: result.room_id,
+          status: "approved",
+          checked_in_at: now,
+        }).select("id").single();
 
-    await supabase.from("visit_logs").insert({
-      visit_id: result.id,
-      action: action === "check_in" ? "checked_in" : action === "check_out" ? "checked_out" : "denied",
-      performed_by: profile.id,
-    });
+        if (visitErr) {
+          console.error("Visit create error:", visitErr);
+          showToast("Failed to create visit: " + visitErr.message, "error");
+          setLoading(false);
+          return;
+        }
 
-    await supabase.from("audit_logs").insert({
-      user_id: profile.id,
-      action: `visit_${action === "check_in" ? "checked_in" : action === "check_out" ? "checked_out" : "denied"}`,
-      entity_type: "visit",
-      entity_id: result.id,
-      details: { visit_code: result.visit_code, visitor_name: result.visitor?.full_name },
-    });
+        if (visit) {
+          await supabase.from("visit_logs").insert({ visit_id: visit.id, action: "approved", performed_by: profile.id });
+          await supabase.from("audit_logs").insert({ user_id: profile.id, action: "visit_approved", entity_type: "visit", entity_id: visit.id, details: { visit_code: result.visit_code, visitor_name: result.visitor?.full_name } });
+          if (result.resident_id) {
+            await supabase.from("notifications").insert({ user_id: result.resident_id, title: "Visitor Approved", message: `${result.visitor?.full_name ?? "A visitor"} has been approved and checked in at your room.`, type: "visit_approved" });
+          }
+        }
+      } else {
+        await supabase.from("visits").update({ status: "approved", checked_in_at: now }).eq("id", result.id);
+        await supabase.from("visit_logs").insert({ visit_id: result.id, action: "approved", performed_by: profile.id });
+        await supabase.from("audit_logs").insert({ user_id: profile.id, action: "visit_approved", entity_type: "visit", entity_id: result.id, details: { visit_code: result.visit_code, visitor_name: result.visitor?.full_name } });
+        if (result.resident_id) {
+          await supabase.from("notifications").insert({ user_id: result.resident_id, title: "Visitor Approved", message: `${result.visitor?.full_name ?? "A visitor"} has been approved and checked in at your room.`, type: "visit_approved" });
+        }
+      }
+    } else if (action === "check_out") {
+      if (!isInvitationFallback) {
+        await supabase.from("visits").update({ status: "checked_out", checked_out_at: now }).eq("id", result.id);
+        await supabase.from("visit_logs").insert({ visit_id: result.id, action: "checked_out", performed_by: profile.id });
+        await supabase.from("audit_logs").insert({ user_id: profile.id, action: "visit_checked_out", entity_type: "visit", entity_id: result.id, details: { visit_code: result.visit_code, visitor_name: result.visitor?.full_name } });
+      }
+    } else if (action === "deny") {
+      if (isInvitationFallback) {
+        await supabase.from("invitations").update({ status: "declined", updated_at: now }).eq("id", result.id);
+        await supabase.from("audit_logs").insert({ user_id: profile.id, action: "invitation_declined", entity_type: "invitation", entity_id: result.id, details: { visit_code: result.visit_code, visitor_name: result.visitor?.full_name } });
+      } else {
+        await supabase.from("visits").update({ status: "denied" }).eq("id", result.id);
+        await supabase.from("visit_logs").insert({ visit_id: result.id, action: "denied", performed_by: profile.id });
+        await supabase.from("audit_logs").insert({ user_id: profile.id, action: "visit_denied", entity_type: "visit", entity_id: result.id, details: { visit_code: result.visit_code, visitor_name: result.visitor?.full_name } });
+      }
+    }
 
-    showToast(`Visitor ${action === "check_in" ? "checked in" : action === "check_out" ? "checked out" : "denied"}.`);
+    const label = action === "approve" ? "approved" : action === "check_out" ? "checked out" : "denied";
+    showToast(`Visitor ${label}.`);
+    setActionDone(label);
     setResult(null);
     setCode("");
   }
 
-  const canCheckIn = result && result.status === "authorized";
-  const canCheckOut = result && result.status === "checked_in";
-  const isExpired = result?.invitation && new Date(result.invitation.visit_end) < new Date();
+  const canApprove = result && result.status === "authorized";
+  const canCheckOut = result && result.status === "approved";
   const isCancelled = result?.invitation?.status === "cancelled";
 
   return (
@@ -107,12 +200,12 @@ export default function VerifyVisitorPage() {
           <h2 className="font-display text-xl italic">Enter visit code</h2>
           <p className="mt-2 text-sm text-parchment/60">Ask the visitor for their visit code (e.g., VF-A1B2)</p>
           <form onSubmit={handleSearch} className="mt-5">
-            <Input
+            <input
               type="text"
               value={code}
               onChange={(e) => setCode(e.target.value)}
               placeholder="VF-A1B2"
-              className="border-parchment/25 bg-ink-light text-parchment placeholder:text-parchment/40"
+              className="focus-ring w-full rounded-card border-2 border-parchment/30 bg-ink-light px-4 py-3 font-mono text-xl tracking-widest text-parchment placeholder:text-parchment/30"
             />
             <button
               type="submit"
@@ -124,6 +217,9 @@ export default function VerifyVisitorPage() {
           </form>
           {notFound && (
             <p className="mt-3 text-sm text-red-300">No visit found with that code.</p>
+          )}
+          {actionDone && (
+            <p className="mt-3 text-sm text-sage-light">Last action: {actionDone}</p>
           )}
         </div>
 
@@ -143,7 +239,7 @@ export default function VerifyVisitorPage() {
                     )}
                   </div>
                   <div>
-                    <p className="font-display text-lg text-ink">{result.visitor?.full_name ?? "Unknown"}</p>
+                    <p className="font-display text-lg text-ink">{result.visitor?.full_name ?? result.invitation?.visitor_email ?? "Unknown Visitor"}</p>
                     <p className="text-sm text-ink/60">Visit Code: {result.visit_code}</p>
                     {result.visitor?.email && (
                       <p className="text-xs text-ink/50">{result.visitor.email}</p>
@@ -151,13 +247,13 @@ export default function VerifyVisitorPage() {
                   </div>
                 </div>
                 <span className={`rounded-sm border px-2.5 py-1 font-mono text-xs uppercase ${
-                  result.status === "checked_in" ? "border-blue-200 bg-blue-50 text-blue-700" :
-                  result.status === "authorized" ? "border-sage/20 bg-sage/10 text-sage-dim" :
+                  result.status === "approved" ? "border-blue-200 bg-blue-50 text-blue-700" :
+                  result.status === "authorized" ? "border-brass/20 bg-brass/10 text-brass-dark" :
                   result.status === "denied" ? "border-red-300 bg-red-50 text-red-700" :
                   result.status === "checked_out" ? "border-ink/20 bg-ink/5 text-ink/50" :
                   "border-ink/20 bg-ink/5 text-ink/50"
                 }`}>
-                  {result.status.replace(/_/g, " ")}
+                  {result.status === "approved" ? "Active" : result.status.replace(/_/g, " ")}
                 </span>
               </div>
 
@@ -168,20 +264,13 @@ export default function VerifyVisitorPage() {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-ink/60">Room</span>
-                  <span className="font-medium text-ink">Block {result.room?.block} — Room {result.room?.room_number}</span>
+                  <span className="font-medium text-ink">Block {result.room?.block} — Room {result.room?.room_number.replace(/^[AB]-/, "")}</span>
                 </div>
                 {result.invitation && (
                   <>
                     <div className="flex justify-between text-sm">
-                      <span className="text-ink/60">Valid from</span>
+                      <span className="text-ink/60">Arrival Date</span>
                       <span className="text-ink">{new Date(result.invitation.visit_start).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-ink/60">Valid until</span>
-                      <span className={`text-ink ${isExpired ? "text-red-600 font-medium" : ""}`}>
-                        {new Date(result.invitation.visit_end).toLocaleString()}
-                        {isExpired && " (EXPIRED)"}
-                      </span>
                     </div>
                     {result.invitation.reason && (
                       <div className="flex justify-between text-sm">
@@ -213,11 +302,6 @@ export default function VerifyVisitorPage() {
               </div>
 
               {/* Warning messages */}
-              {isExpired && result.status !== "denied" && result.status !== "checked_out" && (
-                <div className="mt-4 rounded-sm border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                  This invitation has expired. Do not allow entry.
-                </div>
-              )}
               {isCancelled && result.status !== "denied" && result.status !== "checked_out" && (
                 <div className="mt-4 rounded-sm border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
                   This invitation has been cancelled. Do not allow entry.
@@ -225,8 +309,8 @@ export default function VerifyVisitorPage() {
               )}
 
               <div className="mt-6 flex gap-3">
-                {canCheckIn && !isExpired && !isCancelled && (
-                  <button onClick={() => handleAction("check_in")} className="focus-ring rounded-card bg-sage px-4 py-2.5 text-sm font-medium text-parchment hover:bg-sage-dim">
+                {canApprove && !isCancelled && (
+                  <button onClick={() => handleAction("approve")} className="focus-ring rounded-card bg-sage px-4 py-2.5 text-sm font-medium text-parchment hover:bg-sage-dim">
                     Check In
                   </button>
                 )}
@@ -236,7 +320,7 @@ export default function VerifyVisitorPage() {
                   </button>
                 )}
                 {result.status !== "denied" && result.status !== "checked_out" && (
-                  <button onClick={() => handleAction("deny")} className="focus-ring rounded-card border border-red-300 px-4 py-2.5 text-sm text-red-700 hover:bg-red-50">
+                  <button onClick={() => setDenyDialogOpen(true)} className="focus-ring rounded-card border border-red-300 px-4 py-2.5 text-sm text-red-700 hover:bg-red-50">
                     Deny
                   </button>
                 )}
@@ -249,6 +333,16 @@ export default function VerifyVisitorPage() {
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={denyDialogOpen}
+        onClose={() => setDenyDialogOpen(false)}
+        onConfirm={() => handleAction("deny")}
+        title="Deny Visitor"
+        message={`Are you sure you want to deny ${result?.visitor?.full_name ?? "this visitor"}? This action will be logged.`}
+        confirmLabel="Deny"
+        variant="danger"
+      />
     </DashboardShell>
   );
 }

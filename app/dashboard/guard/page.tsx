@@ -5,7 +5,6 @@ import DashboardShell from "@/components/DashboardShell";
 import StatCard from "@/components/ui/StatCard";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/context/AuthContext";
-import type { GuardStats } from "@/lib/types";
 
 interface TodayLog {
   id: string;
@@ -16,7 +15,12 @@ interface TodayLog {
 
 export default function GuardDashboard() {
   const { user: profile, loading: authLoading } = useAuth();
-  const [stats, setStats] = useState<GuardStats | null>(null);
+  const [stats, setStats] = useState({
+    visitorsToday: 0,
+    currentlyInside: 0,
+    pendingVerification: 0,
+    flaggedActivity: 0,
+  });
   const [log, setLog] = useState<TodayLog[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -27,23 +31,24 @@ export default function GuardDashboard() {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      const [inside, todayCount] = await Promise.all([
-        supabase.from("visits").select("*", { count: "exact", head: true }).eq("status", "checked_in"),
+      const [inside, todayCount, pending, flagged, logs] = await Promise.all([
+        supabase.from("visits").select("*", { count: "exact", head: true }).in("status", ["approved"]),
         supabase.from("visits").select("*", { count: "exact", head: true }).gte("created_at", today.toISOString()),
+        supabase.from("visits").select("*", { count: "exact", head: true }).eq("status", "authorized"),
+        supabase.from("activity_reviews").select("*", { count: "exact", head: true }).eq("status", "pending"),
+        supabase
+          .from("visit_logs")
+          .select("*, visit:visits(visitor:visitor_profiles(full_name), room:rooms(room_number, block))")
+          .gte("created_at", today.toISOString())
+          .order("created_at", { ascending: false })
+          .limit(10),
       ]);
-
-      const { data: logs } = await supabase
-        .from("visit_logs")
-        .select("*, visit:visits(visitor:visitor_profiles(full_name), room:rooms(room_number, block))")
-        .gte("created_at", today.toISOString())
-        .order("created_at", { ascending: false })
-        .limit(10);
 
       setStats({
         visitorsToday: todayCount.count ?? 0,
         currentlyInside: inside.count ?? 0,
-        pendingVerification: 0,
-        flaggedActivity: 0,
+        pendingVerification: pending.count ?? 0,
+        flaggedActivity: flagged.count ?? 0,
       });
 
       setLog((logs ?? []) as TodayLog[]);
@@ -69,10 +74,10 @@ export default function GuardDashboard() {
       <h1 className="font-display text-3xl italic text-ink">Main Gate</h1>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Visitors Today" value={stats?.visitorsToday ?? 0} />
-        <StatCard label="Currently Inside" value={stats?.currentlyInside ?? 0} />
-        <StatCard label="Pending Verification" value={stats?.pendingVerification ?? 0} />
-        <StatCard label="Flagged Activity" value={stats?.flaggedActivity ?? 0} />
+        <StatCard label="Visitors Today" value={stats.visitorsToday} />
+        <StatCard label="Currently Inside" value={stats.currentlyInside} />
+        <StatCard label="Pending Verification" value={stats.pendingVerification} />
+        <StatCard label="Flagged Activity" value={stats.flaggedActivity} />
       </div>
 
       <div className="mt-8 flex flex-wrap gap-3">

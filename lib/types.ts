@@ -2,7 +2,7 @@ export type UserRole = "visitor" | "resident" | "guard" | "admin";
 
 export type InvitationStatus = "pending" | "accepted" | "declined" | "expired" | "cancelled";
 
-export type VisitStatus = "pending" | "authorized" | "checked_in" | "checked_out" | "cancelled" | "expired" | "denied";
+export type VisitStatus = "pending" | "authorized" | "approved" | "checked_in" | "checked_out" | "cancelled" | "expired" | "denied";
 
 export type VerificationStatus = "pending" | "verified" | "rejected";
 
@@ -74,7 +74,7 @@ export interface Invitation {
   visitor_name: string | null;
   room_id: string;
   visit_start: string;
-  visit_end: string;
+  visit_end: string | null;
   reason: string | null;
   vehicle_registration: string | null;
   status: InvitationStatus;
