@@ -165,6 +165,7 @@ export async function POST() {
       visitor_id: inv.visitor_id, reason: inv.reason, status: inv.status,
       visit_start: inv.visit_start, visit_end: inv.visit_end,
       room_id: inv.room_id,
+      visit_code: generateCode(),
     }).select("id").single();
     if (error) log.push(`Invite ${inv.visitor_name}: ${error.message} (visitor_id: ${inv.visitor_id})`);
     else inviteIds.push(data.id);

@@ -1,6 +1,15 @@
 import { supabase } from "../supabaseClient";
 import type { Invitation, InvitationStatus } from "../types";
 
+export function generateVisitCode(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "VF-";
+  for (let i = 0; i < 5; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
+
 export async function getInvitation(id: string) {
   const { data, error } = await supabase
     .from("invitations")
@@ -77,6 +86,7 @@ export async function createInvitation(invitation: {
 
   const enriched = {
     ...invitation,
+    visit_code: generateVisitCode(),
     visit_start: toTSTZ(invitation.visit_start) ?? invitation.visit_start,
     visit_end: toTSTZ(invitation.visit_end),
   };
