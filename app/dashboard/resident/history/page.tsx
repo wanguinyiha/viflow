@@ -70,7 +70,7 @@ export default function VisitHistoryPage() {
             <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-auto">
               <option value="">All statuses</option>
               <option value="authorized">Pending Approval</option>
-              <option value="approved">Active</option>
+              <option value="checked_in">Active</option>
               <option value="checked_out">Completed</option>
               <option value="denied">Denied</option>
             </Select>

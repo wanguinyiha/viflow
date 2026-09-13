@@ -1,18 +1,17 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import MultiStepForm from "@/components/ui/MultiStepForm";
 import FormField, { Input, Select } from "@/components/ui/FormField";
 import { supabase } from "@/lib/supabaseClient";
 
-function generateRandomPassword() {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
-  let password = "";
-  for (let i = 0; i < 12; i++) {
-    password += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return password;
+interface FormData {
+  fullName: string;
+  email: string;
+  phone: string;
+  idNumber: string;
+  idType: string;
+  vehiclePlate: string;
 }
 
 function RegisterContent() {
@@ -21,312 +20,129 @@ function RegisterContent() {
   const invitationId = searchParams.get("invitation");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [loadingInvite, setLoadingInvite] = useState(!!invitationId);
+  const [inviteInfo, setInviteInfo] = useState<{ residentName: string; roomLabel: string } | null>(null);
 
-  const steps = [
-    {
-      label: "Personal Info",
-      content: (data: Record<string, unknown>, update: (d: Record<string, unknown>) => void) => (
-        <div className="space-y-5">
-          <h2 className="font-display text-2xl text-ink">Personal Information</h2>
-          <p className="text-ink/60">Tell us about yourself. This information will be used for visitor verification.</p>
-          <FormField label="Full Name" htmlFor="fullName" required>
-            <Input
-              id="fullName"
-              type="text"
-              required
-              value={(data.fullName as string) ?? ""}
-              onChange={(e) => update({ fullName: e.target.value })}
-              placeholder="Amara Kimani"
-            />
-          </FormField>
-          <FormField label="Email" htmlFor="email" required>
-            <Input
-              id="email"
-              type="email"
-              required
-              value={(data.email as string) ?? ""}
-              onChange={(e) => update({ email: e.target.value })}
-              placeholder="you@example.com"
-            />
-          </FormField>
-          <FormField label="Phone" htmlFor="phone" required>
-            <Input
-              id="phone"
-              type="tel"
-              required
-              value={(data.phone as string) ?? ""}
-              onChange={(e) => update({ phone: e.target.value })}
-              placeholder="+254 700 000000"
-            />
-          </FormField>
-        </div>
-      ),
-    },
-    {
-      label: "Identity",
-      content: (data: Record<string, unknown>, update: (d: Record<string, unknown>) => void) => (
-        <div className="space-y-5">
-          <h2 className="font-display text-2xl text-ink">Identity Information</h2>
-          <p className="text-ink/60">Provide your identification details for verification at the gate.</p>
-          <FormField label="ID Number" htmlFor="idNumber" required>
-            <Input
-              id="idNumber"
-              type="text"
-              required
-              value={(data.idNumber as string) ?? ""}
-              onChange={(e) => update({ idNumber: e.target.value })}
-              placeholder="National ID or Passport number"
-            />
-          </FormField>
-          <FormField label="ID Type" htmlFor="idType" required>
-            <Select
-              id="idType"
-              value={(data.idType as string) ?? "national_id"}
-              onChange={(e) => update({ idType: e.target.value })}
-            >
-              <option value="national_id">National ID</option>
-              <option value="passport">Passport</option>
-              <option value="drivers_license">Driver&apos;s License</option>
-            </Select>
-          </FormField>
-        </div>
-      ),
-    },
-    {
-      label: "Vehicle",
-      content: (data: Record<string, unknown>, update: (d: Record<string, unknown>) => void) => (
-        <div className="space-y-5">
-          <h2 className="font-display text-2xl text-ink">Vehicle Information</h2>
-          <p className="text-ink/60">If you will be arriving by vehicle, provide the registration details. Write N/A if you do not have a vehicle.</p>
-          <FormField label="Registration Number" htmlFor="plate" required helpText="Write N/A if you have no vehicle">
-            <Input
-              id="plate"
-              type="text"
-              required
-              value={(data.vehiclePlate as string) ?? ""}
-              onChange={(e) => update({ vehiclePlate: e.target.value })}
-              placeholder="KDA 214B or N/A"
-            />
-          </FormField>
-        </div>
-      ),
-    },
-    {
-      label: "Review",
-      content: (data: Record<string, unknown>) => (
-        <div className="space-y-5">
-          <h2 className="font-display text-2xl text-ink">Review Your Information</h2>
-          <p className="text-ink/60">Please confirm the details below before submitting.</p>
-          <div className="rounded-card border border-ink/15 bg-parchment p-5 space-y-3">
-            <div className="flex justify-between border-b border-ink/10 pb-2">
-              <span className="text-sm text-ink/60">Name</span>
-              <span className="text-sm font-medium text-ink">{(data.fullName as string) || "\u2014"}</span>
-            </div>
-            <div className="flex justify-between border-b border-ink/10 pb-2">
-              <span className="text-sm text-ink/60">Email</span>
-              <span className="text-sm font-medium text-ink">{(data.email as string) || "\u2014"}</span>
-            </div>
-            <div className="flex justify-between border-b border-ink/10 pb-2">
-              <span className="text-sm text-ink/60">Phone</span>
-              <span className="text-sm font-medium text-ink">{(data.phone as string) || "\u2014"}</span>
-            </div>
-            <div className="flex justify-between border-b border-ink/10 pb-2">
-              <span className="text-sm text-ink/60">ID Number</span>
-              <span className="text-sm font-medium text-ink">{(data.idNumber as string) || "\u2014"}</span>
-            </div>
-            <div className="flex justify-between border-b border-ink/10 pb-2">
-              <span className="text-sm text-ink/60">ID Type</span>
-              <span className="text-sm font-medium text-ink">
-                {(data.idType as string) === "passport"
-                  ? "Passport"
-                  : (data.idType as string) === "drivers_license"
-                  ? "Driver's License"
-                  : "National ID"}
-              </span>
-            </div>
-            <div className="flex justify-between border-b border-ink/10 pb-2">
-              <span className="text-sm text-ink/60">Vehicle</span>
-              <span className="text-sm font-medium text-ink">{(data.vehiclePlate as string) || "N/A"}</span>
-            </div>
-          </div>
-        </div>
-      ),
-    },
-  ];
+  const [data, setData] = useState<FormData>({
+    fullName: "",
+    email: "",
+    phone: "",
+    idNumber: "",
+    idType: "national_id",
+    vehiclePlate: "",
+  });
 
-  async function handleSubmit(data: Record<string, unknown>) {
+  // Pre-fill from invitation + favourite + visitor profile data
+  useEffect(() => {
+    if (!invitationId) return;
+
+    async function load() {
+      // Fetch invitation with room and visitor data
+      const { data: invitation } = await supabase
+        .from("invitations")
+        .select("visitor_name, visitor_email, vehicle_registration, visitor_id, resident:profiles!invitations_resident_id_fkey(full_name), room:rooms(room_number, block)")
+        .eq("id", invitationId)
+        .single();
+
+      if (!invitation) {
+        setLoadingInvite(false);
+        return;
+      }
+
+      const room = invitation.room as { room_number: string; block: string } | null;
+      const resident = invitation.resident as { full_name: string } | null;
+
+      setInviteInfo({
+        residentName: resident?.full_name ?? "Your host",
+        roomLabel: room ? `Block ${room.block} — Room ${room.room_number.replace(/^[AB]-/, "")}` : "",
+      });
+
+      let phone = "";
+      let idNumber = "";
+      let vehiclePlate = invitation.vehicle_registration || "";
+
+      // If visitor has registered before, fetch their profile for id_number and phone
+      if (invitation.visitor_id) {
+        const { data: visitorProfile } = await supabase
+          .from("visitor_profiles")
+          .select("id_number, phone")
+          .eq("id", invitation.visitor_id)
+          .single();
+
+        if (visitorProfile) {
+          idNumber = visitorProfile.id_number || "";
+          phone = visitorProfile.phone || "";
+        }
+
+        // Fetch vehicle registration from vehicles table
+        const { data: vehicle } = await supabase
+          .from("vehicles")
+          .select("registration_number")
+          .eq("visitor_id", invitation.visitor_id)
+          .eq("is_active", true)
+          .limit(1)
+          .maybeSingle();
+
+        if (vehicle?.registration_number && !vehiclePlate) {
+          vehiclePlate = vehicle.registration_number;
+        }
+
+        // Also check favourite_visitors for phone (resident may have updated it)
+        const { data: fav } = await supabase
+          .from("favourite_visitors")
+          .select("visitor_phone")
+          .eq("visitor_id", invitation.visitor_id)
+          .maybeSingle();
+
+        if (fav?.visitor_phone) {
+          phone = fav.visitor_phone;
+        }
+      }
+
+      setData((prev) => ({
+        ...prev,
+        fullName: invitation.visitor_name || prev.fullName,
+        email: invitation.visitor_email || prev.email,
+        phone: phone || prev.phone,
+        idNumber: idNumber || prev.idNumber,
+        vehiclePlate: vehiclePlate || prev.vehiclePlate,
+      }));
+
+      setLoadingInvite(false);
+    }
+
+    load();
+  }, [invitationId]);
+
+  function updateField(field: keyof FormData, value: string) {
+    setData((prev) => ({ ...prev, [field]: value }));
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
     setSubmitting(true);
     setError("");
 
     try {
-      const email = data.email as string;
-      const fullName = data.fullName as string;
-      const phone = data.phone as string;
-      const idNumber = data.idNumber as string;
-      const idType = data.idType as string;
-      const vehiclePlate = (data.vehiclePlate as string) || "N/A";
+      const res = await fetch("/api/visitor/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: data.email,
+          fullName: data.fullName,
+          phone: data.phone,
+          idNumber: data.idNumber,
+          vehiclePlate: data.vehiclePlate || "N/A",
+          invitationId,
+        }),
+      });
 
-      // Check if visitor already has a profile by email
-      const { data: existingVisitor } = await supabase
-        .from("visitor_profiles")
-        .select("id, user_id")
-        .eq("email", email)
-        .single();
+      const result = await res.json();
 
-      let userId = existingVisitor?.user_id;
-      let visitorProfileId = existingVisitor?.id;
-
-      if (!existingVisitor) {
-        // Create a new auth account with a generated password (visitor doesn't log in)
-        const tempPassword = generateRandomPassword();
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email,
-          password: tempPassword,
-          options: {
-            data: {
-              full_name: fullName,
-              role: "visitor",
-            },
-          },
-        });
-
-        if (authError) {
-          setError(authError.message);
-          setSubmitting(false);
-          return;
-        }
-
-        userId = authData.user?.id;
-
-        if (!userId) {
-          setError("Failed to create account. Please try again.");
-          setSubmitting(false);
-          return;
-        }
-
-        // Create profile
-        const { error: profileInsertError } = await supabase.from("profiles").insert({
-          id: userId,
-          full_name: fullName,
-          email,
-          phone: phone || null,
-          role: "visitor",
-        });
-
-        if (profileInsertError) {
-          console.error("Profile insert error:", profileInsertError);
-          setError("Failed to create profile: " + profileInsertError.message);
-          setSubmitting(false);
-          return;
-        }
-
-        // Create visitor profile
-        const { data: newVisitorProfile, error: visitorProfileError } = await supabase
-          .from("visitor_profiles")
-          .insert({
-            user_id: userId,
-            full_name: fullName,
-            email,
-            phone: phone || null,
-            id_number: idNumber || null,
-          })
-          .select("id")
-          .single();
-
-        if (visitorProfileError) {
-          console.error("Visitor profile error:", visitorProfileError);
-          setError("Failed to create visitor profile: " + visitorProfileError.message);
-          setSubmitting(false);
-          return;
-        }
-
-        visitorProfileId = newVisitorProfile.id;
-      } else {
-        // Update existing visitor profile with new info
-        await supabase
-          .from("visitor_profiles")
-          .update({
-            full_name: fullName,
-            phone: phone || null,
-            id_number: idNumber || null,
-          })
-          .eq("id", existingVisitor.id);
-      }
-
-      if (!visitorProfileId) {
-        setError("Failed to create visitor profile. Please try again.");
+      if (!res.ok || result.error) {
+        setError(result.error || "Registration failed. Please try again.");
         setSubmitting(false);
         return;
-      }
-
-      // Add vehicle if provided and not N/A
-      if (vehiclePlate && vehiclePlate.toUpperCase() !== "N/A" && visitorProfileId) {
-        // Check if vehicle already exists for this visitor
-        const { data: existingVehicle } = await supabase
-          .from("vehicles")
-          .select("id")
-          .eq("visitor_id", visitorProfileId)
-          .eq("registration_number", vehiclePlate)
-          .single();
-
-        if (!existingVehicle) {
-          const { error: vehicleError } = await supabase.from("vehicles").insert({
-            visitor_id: visitorProfileId,
-            registration_number: vehiclePlate,
-          });
-          if (vehicleError) console.error("Vehicle error:", vehicleError);
-        }
-      }
-
-      // Update invitation if exists
-      if (invitationId) {
-        const { data: invitation } = await supabase
-          .from("invitations")
-          .select("*, room:rooms(id)")
-          .eq("id", invitationId)
-          .single();
-
-        if (invitation) {
-          // Update invitation with visitor info
-          const { error: invUpdateError } = await supabase
-            .from("invitations")
-            .update({
-              visitor_id: visitorProfileId,
-              visitor_name: fullName,
-              status: "accepted",
-            })
-            .eq("id", invitationId);
-
-          if (invUpdateError) {
-            console.error("Invitation update error:", invUpdateError);
-          }
-
-          // Create visit record
-          const room = invitation.room as { id: string } | null;
-          if (room) {
-            const { error: visitError } = await supabase.from("visits").insert({
-              invitation_id: invitationId,
-              visit_code: invitation.visit_code,
-              visitor_id: visitorProfileId,
-              resident_id: invitation.resident_id,
-              room_id: room.id,
-              status: "authorized",
-            });
-            if (visitError) {
-              console.error("Visit create error:", visitError);
-              setError("Failed to create visit record: " + visitError.message);
-              setSubmitting(false);
-              return;
-            }
-          }
-
-          // Add to favourites
-          const { error: favError } = await supabase.from("favourite_visitors").insert({
-            resident_id: invitation.resident_id,
-            visitor_id: visitorProfileId,
-          }).select();
-          if (favError) console.error("Favourite error:", favError);
-        }
       }
 
       if (invitationId) {
@@ -353,6 +169,12 @@ function RegisterContent() {
             <span className="font-display text-xl italic text-ink">ViFlow</span>
           </a>
           <p className="mt-4 font-mono text-[13px] text-brass-dark">Visitor Registration</p>
+          {inviteInfo && (
+            <p className="mt-2 text-sm text-ink/50">
+              You&apos;ve been invited by <span className="font-medium text-ink">{inviteInfo.residentName}</span>
+              {inviteInfo.roomLabel && <> &middot; {inviteInfo.roomLabel}</>}
+            </p>
+          )}
         </div>
 
         {error && (
@@ -361,12 +183,148 @@ function RegisterContent() {
           </div>
         )}
 
-        {submitting ? (
+        {loadingInvite ? (
+          <div className="py-12 text-center">
+            <p className="font-mono text-sm text-ink/50">Loading invitation details…</p>
+          </div>
+        ) : submitting ? (
           <div className="py-12 text-center">
             <p className="font-mono text-sm text-ink/50">Submitting your registration…</p>
           </div>
         ) : (
-          <MultiStepForm steps={steps} onComplete={handleSubmit} />
+          <form onSubmit={handleSubmit} className="space-y-8">
+            {/* Personal Info */}
+            <div className="rounded-card border border-ink/15 bg-parchment-dim p-6">
+              <h2 className="font-display text-xl text-ink">Personal Information</h2>
+              <p className="mt-1 text-sm text-ink/50">Your name, email, and phone number.</p>
+              <div className="mt-5 space-y-4">
+                <FormField label="Full Name" htmlFor="fullName" required>
+                  <Input
+                    id="fullName"
+                    type="text"
+                    required
+                    value={data.fullName}
+                    onChange={(e) => updateField("fullName", e.target.value)}
+                    placeholder="Amara Kimani"
+                  />
+                </FormField>
+                <FormField label="Email" htmlFor="email" required>
+                  <Input
+                    id="email"
+                    type="email"
+                    required
+                    value={data.email}
+                    onChange={(e) => updateField("email", e.target.value)}
+                    placeholder="you@example.com"
+                  />
+                </FormField>
+                <FormField label="Phone" htmlFor="phone" required>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    required
+                    value={data.phone}
+                    onChange={(e) => updateField("phone", e.target.value)}
+                    placeholder="+254 700 000000"
+                  />
+                </FormField>
+              </div>
+            </div>
+
+            {/* Identity */}
+            <div className="rounded-card border border-ink/15 bg-parchment-dim p-6">
+              <h2 className="font-display text-xl text-ink">Identity</h2>
+              <p className="mt-1 text-sm text-ink/50">Your identification details for verification at the gate.</p>
+              <div className="mt-5 space-y-4">
+                <FormField label="ID Type" htmlFor="idType" required>
+                  <Select
+                    id="idType"
+                    value={data.idType}
+                    onChange={(e) => updateField("idType", e.target.value)}
+                  >
+                    <option value="national_id">National ID</option>
+                    <option value="passport">Passport</option>
+                    <option value="drivers_license">Driver&apos;s License</option>
+                  </Select>
+                </FormField>
+                <FormField label="ID Number" htmlFor="idNumber" required>
+                  <Input
+                    id="idNumber"
+                    type="text"
+                    required
+                    value={data.idNumber}
+                    onChange={(e) => updateField("idNumber", e.target.value)}
+                    placeholder="National ID or Passport number"
+                  />
+                </FormField>
+              </div>
+            </div>
+
+            {/* Vehicle */}
+            <div className="rounded-card border border-ink/15 bg-parchment-dim p-6">
+              <h2 className="font-display text-xl text-ink">Vehicle</h2>
+              <p className="mt-1 text-sm text-ink/50">If you will be arriving by vehicle. Write N/A if you have no vehicle.</p>
+              <div className="mt-5">
+                <FormField label="Registration Number" htmlFor="plate" required helpText="Write N/A if you have no vehicle">
+                  <Input
+                    id="plate"
+                    type="text"
+                    required
+                    value={data.vehiclePlate}
+                    onChange={(e) => updateField("vehiclePlate", e.target.value)}
+                    placeholder="KDA 214B or N/A"
+                  />
+                </FormField>
+              </div>
+            </div>
+
+            {/* Review */}
+            <div className="rounded-card border border-ink/15 bg-parchment-dim p-6">
+              <h2 className="font-display text-xl text-ink">Review</h2>
+              <p className="mt-1 text-sm text-ink/50">Confirm your details before submitting.</p>
+              <div className="mt-5 space-y-3">
+                <div className="flex justify-between border-b border-ink/10 pb-2">
+                  <span className="text-sm text-ink/60">Name</span>
+                  <span className="text-sm font-medium text-ink">{data.fullName || "—"}</span>
+                </div>
+                <div className="flex justify-between border-b border-ink/10 pb-2">
+                  <span className="text-sm text-ink/60">Email</span>
+                  <span className="text-sm font-medium text-ink">{data.email || "—"}</span>
+                </div>
+                <div className="flex justify-between border-b border-ink/10 pb-2">
+                  <span className="text-sm text-ink/60">Phone</span>
+                  <span className="text-sm font-medium text-ink">{data.phone || "—"}</span>
+                </div>
+                <div className="flex justify-between border-b border-ink/10 pb-2">
+                  <span className="text-sm text-ink/60">ID Type</span>
+                  <span className="text-sm font-medium text-ink">
+                    {data.idType === "passport" ? "Passport" : data.idType === "drivers_license" ? "Driver's License" : "National ID"}
+                  </span>
+                </div>
+                <div className="flex justify-between border-b border-ink/10 pb-2">
+                  <span className="text-sm text-ink/60">ID Number</span>
+                  <span className="text-sm font-medium text-ink">{data.idNumber || "—"}</span>
+                </div>
+                <div className="flex justify-between pb-1">
+                  <span className="text-sm text-ink/60">Vehicle</span>
+                  <span className="text-sm font-medium text-ink">{data.vehiclePlate || "N/A"}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                type="submit"
+                disabled={submitting}
+                className="focus-ring rounded-card bg-ink px-5 py-2.5 text-sm font-medium text-parchment hover:bg-ink-light disabled:opacity-60"
+              >
+                {submitting ? "Submitting…" : "Complete Registration"}
+              </button>
+              <a href="/" className="focus-ring rounded-card border border-ink/20 px-5 py-2.5 text-sm text-ink hover:border-ink/40">
+                Cancel
+              </a>
+            </div>
+          </form>
         )}
       </div>
     </div>

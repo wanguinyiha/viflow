@@ -83,7 +83,7 @@ export default function InvitationDetailPage() {
           </div>
           <div className="flex justify-between border-b border-ink/10 pb-3">
             <span className="text-sm text-ink/60">Arrival Date</span>
-            <span className="text-sm text-ink">{new Date(invitation.visit_start).toLocaleString()}</span>
+            <span className="text-sm text-ink">{new Date(invitation.visit_start).toLocaleDateString()}</span>
           </div>
           {invitation.reason && (
             <div className="flex justify-between border-b border-ink/10 pb-3">

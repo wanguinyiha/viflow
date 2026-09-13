@@ -182,7 +182,7 @@ export async function POST() {
   for (const v of visits) {
     if (!inviteIds[v.inviteIdx]) continue;
     const { data, error } = await supabaseAdmin.from("visits").insert({
-      visit_code: `VF-${String(v.inviteIdx + 1).padStart(3, "0")}`,
+      visit_code: generateCode(),
       invitation_id: inviteIds[v.inviteIdx],
       visitor_id: v.visitor_id, resident_id: userIds.resident, room_id: v.room_id,
       status: v.status, checked_in_at: v.checked_in_at, checked_out_at: v.checked_out_at ?? null,
@@ -219,3 +219,11 @@ export async function POST() {
 function daysAgo(n: number) { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString(); }
 function daysFromNow(n: number) { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString(); }
 function hoursAgo(n: number) { const d = new Date(); d.setHours(d.getHours() - n); return d.toISOString(); }
+function generateCode(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "VF-";
+  for (let i = 0; i < 5; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}

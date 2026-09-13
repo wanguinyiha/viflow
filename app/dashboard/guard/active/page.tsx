@@ -21,7 +21,7 @@ export default function ActiveVisitorsPage() {
       const { data } = await supabase
         .from("visits")
         .select("*, visitor:visitor_profiles(full_name, photo_url, email), resident:profiles!visits_resident_id_fkey(full_name), room:rooms(room_number, block)")
-        .eq("status", "approved")
+        .eq("status", "checked_in")
         .order("checked_in_at", { ascending: false });
 
       setVisits((data ?? []) as Visit[]);
@@ -32,6 +32,9 @@ export default function ActiveVisitorsPage() {
 
   async function handleCheckOut(visitId: string) {
     if (!profile) return;
+
+    // Get visit data for notification before updating
+    const visit = visits.find((v) => v.id === visitId);
 
     await supabase.from("visits").update({
       status: "checked_out",
@@ -50,6 +53,24 @@ export default function ActiveVisitorsPage() {
       entity_type: "visit",
       entity_id: visitId,
     });
+
+    // Notify resident
+    if (visit?.resident_id) {
+      await fetch("/api/notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: visit.resident_id,
+          title: "Visitor Checked Out",
+          message: `${visit.visitor?.full_name ?? "A visitor"} has checked out.`,
+          type: "visit_checked_out",
+          kind: "notification",
+          entityType: "visit",
+          entityId: visitId,
+          link: "/dashboard/resident/history",
+        }),
+      });
+    }
 
     setVisits((prev) => prev.filter((v) => v.id !== visitId));
     showToast("Visitor checked out.");

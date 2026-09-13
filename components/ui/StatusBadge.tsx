@@ -11,7 +11,6 @@ const invitationStyles: Record<InvitationStatus, string> = {
 const visitStyles: Record<VisitStatus, string> = {
   pending: "bg-brass/10 text-brass-dark border-brass/20",
   authorized: "bg-brass/10 text-brass-dark border-brass/20",
-  approved: "bg-blue-50 text-blue-700 border-blue-200",
   checked_in: "bg-blue-50 text-blue-700 border-blue-200",
   checked_out: "bg-ink/5 text-ink/50 border-ink/10",
   cancelled: "bg-red-50 text-red-600 border-red-200",
@@ -20,7 +19,7 @@ const visitStyles: Record<VisitStatus, string> = {
 };
 
 const visitLabels: Partial<Record<VisitStatus, string>> = {
-  approved: "Active",
+  checked_in: "Active",
   authorized: "Pending Approval",
   checked_out: "Completed",
 };

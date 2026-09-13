@@ -2,7 +2,7 @@ export type UserRole = "visitor" | "resident" | "guard" | "admin";
 
 export type InvitationStatus = "pending" | "accepted" | "declined" | "expired" | "cancelled";
 
-export type VisitStatus = "pending" | "authorized" | "approved" | "checked_in" | "checked_out" | "cancelled" | "expired" | "denied";
+export type VisitStatus = "pending" | "authorized" | "checked_in" | "checked_out" | "cancelled" | "expired" | "denied";
 
 export type VerificationStatus = "pending" | "verified" | "rejected";
 
@@ -133,6 +133,9 @@ export interface FavouriteVisitor {
   resident_id: string;
   visitor_id: string;
   label: string | null;
+  visitor_name: string | null;
+  visitor_email: string | null;
+  visitor_phone: string | null;
   created_at: string;
   visitor?: VisitorProfile;
 }

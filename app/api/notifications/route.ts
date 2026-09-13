@@ -21,6 +21,43 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ data });
 }
 
+export async function POST(req: NextRequest) {
+  const body = await req.json();
+  const { userId, title, message, type, kind, entityType, entityId, link } = body as {
+    userId: string;
+    title: string;
+    message: string;
+    type: string;
+    kind?: string;
+    entityType?: string;
+    entityId?: string;
+    link?: string;
+  };
+
+  if (!userId || !title || !message) {
+    return NextResponse.json({ error: "userId, title, and message required" }, { status: 400 });
+  }
+
+  const { error } = await supabaseAdmin
+    .from("notifications")
+    .insert({
+      user_id: userId,
+      title,
+      message,
+      type: type ?? "general",
+      kind: kind ?? "notification",
+      entity_type: entityType ?? null,
+      entity_id: entityId ?? null,
+      link: link ?? null,
+    });
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ success: true });
+}
+
 export async function PATCH(req: NextRequest) {
   const body = await req.json();
   const { ids, userId } = body as { ids?: string[]; userId?: string };

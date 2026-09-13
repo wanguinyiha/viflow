@@ -17,7 +17,7 @@ interface ActivityLog {
   performed_by: string | null;
   notes: string | null;
   created_at: string;
-  visit: (Visit & { visit_code?: string }) | null;
+  visit: Visit | null;
 }
 
 function formatAction(action: string): string {
@@ -51,7 +51,6 @@ export default function ActivityReviewPage() {
     return logs.filter((log) => {
       const matchesSearch =
         !search ||
-        log.visit?.visit_code?.toLowerCase().includes(search.toLowerCase()) ||
         log.notes?.toLowerCase().includes(search.toLowerCase());
       const matchesAction = !actionFilter || log.action === actionFilter;
       return matchesSearch && matchesAction;
@@ -64,15 +63,6 @@ export default function ActivityReviewPage() {
       label: "Time",
       render: (row) => new Date(row.created_at).toLocaleString(),
       sortable: true,
-    },
-    {
-      key: "visit_code",
-      label: "Visit Code",
-      render: (row) => (
-        <span className="font-mono text-xs text-ink/60">
-          {row.visit?.visit_code ?? "\u2014"}
-        </span>
-      ),
     },
     {
       key: "action",
@@ -116,7 +106,7 @@ export default function ActivityReviewPage() {
         <FilterBar
           search={search}
           onSearchChange={setSearch}
-          searchPlaceholder="Search by visit code or notes..."
+          searchPlaceholder="Search by notes..."
           filters={
             <Select
               value={actionFilter}
@@ -158,12 +148,6 @@ export default function ActivityReviewPage() {
                 <h3 className="text-sm text-ink/50">Time</h3>
                 <p className="mt-1 font-medium text-ink">
                   {new Date(selectedLog.created_at).toLocaleString()}
-                </p>
-              </div>
-              <div>
-                <h3 className="text-sm text-ink/50">Visit Code</h3>
-                <p className="mt-1 font-mono text-sm text-ink">
-                  {selectedLog.visit?.visit_code ?? "\u2014"}
                 </p>
               </div>
               <div>

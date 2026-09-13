@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseServer";
+import { invitationCancelled, visitorDenied, adminVisitDenied, activityFlagged, roomChanged } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -105,8 +106,35 @@ export async function POST(request: Request) {
 
       case "deactivate_user": {
         const { userId } = data;
+
+        // Check if user is a resident and clean up room assignment
+        const { data: residentProfile } = await supabaseAdmin
+          .from("resident_profiles")
+          .select("id, room_id")
+          .eq("user_id", userId)
+          .single();
+
+        if (residentProfile) {
+          // Mark room as unoccupied
+          if (residentProfile.room_id) {
+            await supabaseAdmin.from("rooms").update({ is_occupied: false }).eq("id", residentProfile.room_id);
+          }
+          // Delete resident profile
+          await supabaseAdmin.from("resident_profiles").delete().eq("id", residentProfile.id);
+        }
+
+        // Change role to visitor
         const { error } = await supabaseAdmin.from("profiles").update({ role: "visitor" }).eq("id", userId);
         if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+        // Log the action
+        await supabaseAdmin.from("audit_logs").insert({
+          action: "user_deactivated",
+          entity_type: "profile",
+          entity_id: userId,
+          details: { previous_role: "resident", room_freed: !!residentProfile },
+        });
+
         return NextResponse.json({ success: true });
       }
 
@@ -172,6 +200,18 @@ export async function POST(request: Request) {
         const { data: newRoomOccupant } = await supabaseAdmin.from("resident_profiles").select("id").eq("room_id", newRoomId).single();
         if (newRoomOccupant) return NextResponse.json({ error: "New room is already occupied" }, { status: 400 });
 
+        // Get room info for notification
+        const { data: oldRoom } = await supabaseAdmin.from("rooms").select("room_number, block").eq("id", currentProfile.room_id).single();
+        const { data: newRoom } = await supabaseAdmin.from("rooms").select("room_number, block").eq("id", newRoomId).single();
+
+        // Get resident info
+        const { data: residentProfile } = await supabaseAdmin
+          .from("resident_profiles")
+          .select("user_id, profiles!inner(full_name)")
+          .eq("id", residentProfileId)
+          .single();
+        const residentUser = residentProfile?.profiles as { full_name?: string } | null;
+
         // Update resident profile
         const { error } = await supabaseAdmin.from("resident_profiles").update({ room_id: newRoomId }).eq("id", residentProfileId);
         if (error) return NextResponse.json({ error: error.message }, { status: 400 });
@@ -187,6 +227,26 @@ export async function POST(request: Request) {
           entity_id: residentProfileId,
           details: { old_room_id: currentProfile.room_id, new_room_id: newRoomId },
         });
+
+        // Notify admins about room change
+        if (residentUser && oldRoom && newRoom) {
+          const { data: admins } = await supabaseAdmin
+            .from("profiles")
+            .select("id")
+            .eq("role", "admin");
+
+          if (admins) {
+            for (const admin of admins) {
+              roomChanged({
+                adminUserId: admin.id,
+                residentName: residentUser.full_name ?? "A resident",
+                oldRoom: `${oldRoom.block} — ${oldRoom.room_number}`,
+                newRoom: `${newRoom.block} — ${newRoom.room_number}`,
+                residentId: residentProfileId,
+              });
+            }
+          }
+        }
 
         return NextResponse.json({ success: true });
       }
@@ -241,13 +301,38 @@ export async function POST(request: Request) {
 
       case "cancel_invitation": {
         const { invitationId } = data;
+        // Fetch invitation data before cancelling
+        const { data: inv } = await supabaseAdmin
+          .from("invitations")
+          .select("id, resident_id, visitor_id, visitor_name, visitor:visitor_profiles(user_id)")
+          .eq("id", invitationId)
+          .single();
+
         const { error } = await supabaseAdmin.from("invitations").update({ status: "cancelled" }).eq("id", invitationId);
         if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+        // Notify visitor if they have a user account
+        if (inv) {
+          const visitorUser = (inv.visitor as { user_id?: string } | null)?.user_id;
+          invitationCancelled({
+            visitorUserId: visitorUser ?? null,
+            residentName: "Your host",
+            invitationId,
+          });
+        }
+
         return NextResponse.json({ success: true });
       }
 
       case "deny_visit": {
         const { visitId, reason } = data;
+        // Fetch visit data before denying
+        const { data: visit } = await supabaseAdmin
+          .from("visits")
+          .select("id, resident_id, visitor:visitor_profiles(full_name)")
+          .eq("id", visitId)
+          .single();
+
         const { error } = await supabaseAdmin.from("visits").update({ status: "denied" }).eq("id", visitId);
         if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
@@ -259,6 +344,31 @@ export async function POST(request: Request) {
           details: { reason: reason || "No reason provided" },
         });
 
+        // Notify resident
+        if (visit?.resident_id) {
+          visitorDenied({
+            residentId: visit.resident_id,
+            visitorName: (visit.visitor as { full_name?: string } | null)?.full_name ?? "A visitor",
+            visitId,
+          });
+        }
+
+        // Notify admin
+        const { data: admins } = await supabaseAdmin
+          .from("profiles")
+          .select("id")
+          .eq("role", "admin");
+
+        if (admins) {
+          for (const admin of admins) {
+            adminVisitDenied({
+              adminUserId: admin.id,
+              visitorName: (visit?.visitor as { full_name?: string } | null)?.full_name ?? "A visitor",
+              visitId,
+            });
+          }
+        }
+
         return NextResponse.json({ success: true });
       }
 
@@ -266,10 +376,28 @@ export async function POST(request: Request) {
         const { visitId, reason, reviewedBy } = data;
         if (!visitId || !reason || !reviewedBy) return NextResponse.json({ error: "visitId, reason, and reviewedBy required" }, { status: 400 });
 
-        const { error } = await supabaseAdmin.from("activity_reviews").insert({
+        const { data: review, error } = await supabaseAdmin.from("activity_reviews").insert({
           visit_id: visitId, reviewed_by: reviewedBy, action: "flagged", reason,
-        });
+        }).select("id").single();
         if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+        // Notify all admins
+        const { data: admins } = await supabaseAdmin
+          .from("profiles")
+          .select("id")
+          .eq("role", "admin");
+
+        if (admins && review) {
+          for (const admin of admins) {
+            activityFlagged({
+              adminUserId: admin.id,
+              title: "Activity Flagged for Review",
+              message: `Activity flagged: ${reason}`,
+              activityReviewId: review.id,
+            });
+          }
+        }
+
         return NextResponse.json({ success: true }, { status: 201 });
       }
 

@@ -9,7 +9,7 @@ export async function getAdminStats(): Promise<DashboardStats> {
     supabase.from("profiles").select("*", { count: "exact", head: true }).eq("role", "visitor"),
     supabase.from("profiles").select("*", { count: "exact", head: true }).eq("role", "resident"),
     supabase.from("profiles").select("*", { count: "exact", head: true }).eq("role", "guard"),
-    supabase.from("visits").select("*", { count: "exact", head: true }).in("status", ["approved"]),
+    supabase.from("visits").select("*", { count: "exact", head: true }).in("status", ["checked_in"]),
     supabase.from("visits").select("*", { count: "exact", head: true }).gte("created_at", today.toISOString()),
     supabase.from("rooms").select("*", { count: "exact", head: true }),
   ]);
@@ -34,7 +34,7 @@ export async function getResidentStats(residentId: string): Promise<ResidentStat
 
   const [activeVisits, pendingInvitations, upcomingVisits, recentVisits] = await Promise.all([
     supabase.from("visits").select("*", { count: "exact", head: true })
-      .eq("resident_id", residentId).in("status", ["authorized", "approved"]),
+      .eq("resident_id", residentId).in("status", ["checked_in"]),
     supabase.from("invitations").select("*", { count: "exact", head: true })
       .eq("resident_id", residentId).eq("status", "pending"),
     supabase.from("invitations").select("*", { count: "exact", head: true })
@@ -60,7 +60,7 @@ export async function getGuardStats(): Promise<GuardStats> {
     supabase.from("visits").select("*", { count: "exact", head: true })
       .gte("created_at", today.toISOString()),
     supabase.from("visits").select("*", { count: "exact", head: true })
-      .in("status", ["approved"]),
+      .in("status", ["checked_in"]),
   ]);
 
   return {

@@ -33,7 +33,7 @@ export default function ActiveVisitsPage() {
         .from("visits")
         .select("*, visitor:visitor_profiles(full_name, photo_url), room:rooms(room_number, block), invitation:invitations(reason, visit_start)")
         .eq("resident_id", profile.id)
-        .in("status", ["authorized", "approved", "checked_in"])
+        .in("status", ["authorized", "checked_in"])
         .order("created_at", { ascending: false });
 
       setVisits((data ?? []) as ActiveVisit[]);
@@ -110,11 +110,9 @@ export default function ActiveVisitsPage() {
                       <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 font-mono text-xs uppercase ${
                         visit.status === "checked_in"
                           ? "border-blue-200 bg-blue-50 text-blue-700"
-                          : visit.status === "approved"
-                          ? "border-sage/20 bg-sage/10 text-sage-dim"
                           : "border-brass/20 bg-brass/10 text-brass-dark"
                       }`}>
-                        {visit.status === "checked_in" ? "Checked In" : visit.status === "approved" ? "Approved" : "Awaiting Approval"}
+                        {visit.status === "checked_in" ? "Checked In" : "Awaiting Check-in"}
                       </span>
                       {visit.checked_in_at && (
                         <p className="mt-1 text-xs text-ink/40">

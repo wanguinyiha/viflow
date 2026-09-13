@@ -137,12 +137,12 @@ export default function AdminDashboard() {
                     </p>
                   </div>
                   <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                    v.status === "approved" ? "bg-blue-50 text-blue-700" :
+                    v.status === "checked_in" ? "bg-blue-50 text-blue-700" :
                     v.status === "checked_out" ? "bg-ink/10 text-ink/60" :
                     v.status === "denied" ? "bg-red-50 text-red-700" :
                     "bg-brass/20 text-ink"
                   }`}>
-                    {v.status === "approved" ? "active" : v.status.replace(/_/g, " ")}
+                    {v.status === "checked_in" ? "active" : v.status.replace(/_/g, " ")}
                   </span>
                 </div>
               ))}

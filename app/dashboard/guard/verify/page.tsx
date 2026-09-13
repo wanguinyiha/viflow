@@ -32,6 +32,7 @@ export default function VerifyVisitorPage() {
   const [notFound, setNotFound] = useState(false);
   const [actionDone, setActionDone] = useState<string | null>(null);
   const [denyDialogOpen, setDenyDialogOpen] = useState(false);
+  const [idVerified, setIdVerified] = useState(false);
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -136,7 +137,7 @@ export default function VerifyVisitorPage() {
           visitor_id: result.visitor.id,
           resident_id: result.resident_id,
           room_id: result.room_id,
-          status: "approved",
+          status: "checked_in",
           checked_in_at: now,
         }).select("id").single();
 
@@ -147,19 +148,43 @@ export default function VerifyVisitorPage() {
           return;
         }
 
-        if (visit) {
-          await supabase.from("visit_logs").insert({ visit_id: visit.id, action: "approved", performed_by: profile.id });
-          await supabase.from("audit_logs").insert({ user_id: profile.id, action: "visit_approved", entity_type: "visit", entity_id: visit.id, details: { visit_code: result.visit_code, visitor_name: result.visitor?.full_name } });
+          if (visit) {
+            await supabase.from("visit_logs").insert({ visit_id: visit.id, action: "checked_in", performed_by: profile.id });
+            await supabase.from("audit_logs").insert({ user_id: profile.id, action: "visit_checked_in", entity_type: "visit", entity_id: visit.id, details: { visit_code: result.visit_code, visitor_name: result.visitor?.full_name } });
           if (result.resident_id) {
-            await supabase.from("notifications").insert({ user_id: result.resident_id, title: "Visitor Approved", message: `${result.visitor?.full_name ?? "A visitor"} has been approved and checked in at your room.`, type: "visit_approved" });
+            await fetch("/api/notifications", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: result.resident_id, title: "Visitor Checked In", message: `${result.visitor?.full_name ?? "A visitor"} has been checked in at your room.`, type: "visit_approved", kind: "notification", entityType: "visit", entityId: visit.id, link: "/dashboard/resident/active" }) });
           }
         }
+
+        // Mark visitor ID as verified if checkbox was checked
+        if (idVerified && result.visitor?.id) {
+          await fetch("/api/admin/crud", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "verify_visitor_id",
+              data: { visitorProfileId: result.visitor.id, verified: true },
+            }),
+          });
+        }
       } else {
-        await supabase.from("visits").update({ status: "approved", checked_in_at: now }).eq("id", result.id);
-        await supabase.from("visit_logs").insert({ visit_id: result.id, action: "approved", performed_by: profile.id });
-        await supabase.from("audit_logs").insert({ user_id: profile.id, action: "visit_approved", entity_type: "visit", entity_id: result.id, details: { visit_code: result.visit_code, visitor_name: result.visitor?.full_name } });
+        await supabase.from("visits").update({ status: "checked_in", checked_in_at: now }).eq("id", result.id);
+        await supabase.from("visit_logs").insert({ visit_id: result.id, action: "checked_in", performed_by: profile.id });
+        await supabase.from("audit_logs").insert({ user_id: profile.id, action: "visit_checked_in", entity_type: "visit", entity_id: result.id, details: { visit_code: result.visit_code, visitor_name: result.visitor?.full_name } });
         if (result.resident_id) {
-          await supabase.from("notifications").insert({ user_id: result.resident_id, title: "Visitor Approved", message: `${result.visitor?.full_name ?? "A visitor"} has been approved and checked in at your room.`, type: "visit_approved" });
+          await fetch("/api/notifications", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: result.resident_id, title: "Visitor Checked In", message: `${result.visitor?.full_name ?? "A visitor"} has been checked in at your room.`, type: "visit_approved", kind: "notification", entityType: "visit", entityId: result.id, link: "/dashboard/resident/active" }) });
+        }
+
+        // Mark visitor ID as verified if checkbox was checked
+        if (idVerified && result.visitor?.id) {
+          await fetch("/api/admin/crud", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "verify_visitor_id",
+              data: { visitorProfileId: result.visitor.id, verified: true },
+            }),
+          });
         }
       }
     } else if (action === "check_out") {
@@ -167,27 +192,37 @@ export default function VerifyVisitorPage() {
         await supabase.from("visits").update({ status: "checked_out", checked_out_at: now }).eq("id", result.id);
         await supabase.from("visit_logs").insert({ visit_id: result.id, action: "checked_out", performed_by: profile.id });
         await supabase.from("audit_logs").insert({ user_id: profile.id, action: "visit_checked_out", entity_type: "visit", entity_id: result.id, details: { visit_code: result.visit_code, visitor_name: result.visitor?.full_name } });
+        if (result.resident_id) {
+          await fetch("/api/notifications", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: result.resident_id, title: "Visitor Checked Out", message: `${result.visitor?.full_name ?? "A visitor"} has checked out.`, type: "visit_checked_out", kind: "notification", entityType: "visit", entityId: result.id, link: "/dashboard/resident/history" }) });
+        }
       }
     } else if (action === "deny") {
       if (isInvitationFallback) {
         await supabase.from("invitations").update({ status: "declined", updated_at: now }).eq("id", result.id);
         await supabase.from("audit_logs").insert({ user_id: profile.id, action: "invitation_declined", entity_type: "invitation", entity_id: result.id, details: { visit_code: result.visit_code, visitor_name: result.visitor?.full_name } });
+        if (result.resident_id) {
+          await fetch("/api/notifications", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: result.resident_id, title: "Visitor Denied", message: `${result.visitor?.full_name ?? "A visitor"} was denied entry.`, type: "visit_denied", kind: "alert", entityType: "invitation", entityId: result.id, link: "/dashboard/resident/active" }) });
+        }
       } else {
         await supabase.from("visits").update({ status: "denied" }).eq("id", result.id);
         await supabase.from("visit_logs").insert({ visit_id: result.id, action: "denied", performed_by: profile.id });
         await supabase.from("audit_logs").insert({ user_id: profile.id, action: "visit_denied", entity_type: "visit", entity_id: result.id, details: { visit_code: result.visit_code, visitor_name: result.visitor?.full_name } });
+        if (result.resident_id) {
+          await fetch("/api/notifications", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: result.resident_id, title: "Visitor Denied", message: `${result.visitor?.full_name ?? "A visitor"} was denied entry.`, type: "visit_denied", kind: "alert", entityType: "visit", entityId: result.id, link: "/dashboard/resident/active" }) });
+        }
       }
     }
 
-    const label = action === "approve" ? "approved" : action === "check_out" ? "checked out" : "denied";
+    const label = action === "approve" ? "checked in" : action === "check_out" ? "checked out" : "denied";
     showToast(`Visitor ${label}.`);
     setActionDone(label);
     setResult(null);
     setCode("");
+    setIdVerified(false);
   }
 
   const canApprove = result && result.status === "authorized";
-  const canCheckOut = result && result.status === "approved";
+  const canCheckOut = result && result.status === "checked_in";
   const isCancelled = result?.invitation?.status === "cancelled";
 
   return (
@@ -247,13 +282,13 @@ export default function VerifyVisitorPage() {
                   </div>
                 </div>
                 <span className={`rounded-sm border px-2.5 py-1 font-mono text-xs uppercase ${
-                  result.status === "approved" ? "border-blue-200 bg-blue-50 text-blue-700" :
+                  result.status === "checked_in" ? "border-blue-200 bg-blue-50 text-blue-700" :
                   result.status === "authorized" ? "border-brass/20 bg-brass/10 text-brass-dark" :
                   result.status === "denied" ? "border-red-300 bg-red-50 text-red-700" :
                   result.status === "checked_out" ? "border-ink/20 bg-ink/5 text-ink/50" :
                   "border-ink/20 bg-ink/5 text-ink/50"
                 }`}>
-                  {result.status === "approved" ? "Active" : result.status.replace(/_/g, " ")}
+                  {result.status === "checked_in" ? "Active" : result.status.replace(/_/g, " ")}
                 </span>
               </div>
 
@@ -270,7 +305,7 @@ export default function VerifyVisitorPage() {
                   <>
                     <div className="flex justify-between text-sm">
                       <span className="text-ink/60">Arrival Date</span>
-                      <span className="text-ink">{new Date(result.invitation.visit_start).toLocaleString()}</span>
+                      <span className="text-ink">{new Date(result.invitation.visit_start).toLocaleDateString()}</span>
                     </div>
                     {result.invitation.reason && (
                       <div className="flex justify-between text-sm">
@@ -306,6 +341,18 @@ export default function VerifyVisitorPage() {
                 <div className="mt-4 rounded-sm border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
                   This invitation has been cancelled. Do not allow entry.
                 </div>
+              )}
+
+              {canApprove && !isCancelled && result.visitor?.id && (
+                <label className="mt-6 flex items-center gap-3 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={idVerified}
+                    onChange={(e) => setIdVerified(e.target.checked)}
+                    className="h-4 w-4 rounded border-ink/30 text-sage focus:ring-sage"
+                  />
+                  <span className="text-sm text-ink/70">I have verified this visitor&apos;s ID</span>
+                </label>
               )}
 
               <div className="mt-6 flex gap-3">

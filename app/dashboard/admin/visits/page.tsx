@@ -24,7 +24,6 @@ interface VisitRow {
   created_at: string;
   updated_at: string;
   invitation?: {
-    visit_code: string;
     visitor_name: string;
     visitor_email: string;
     reason: string | null;
@@ -44,6 +43,7 @@ export default function AdminVisitsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [blockFilter, setBlockFilter] = useState("");
 
   const [selectedVisit, setSelectedVisit] = useState<VisitRow | null>(null);
   const [denyTarget, setDenyTarget] = useState<VisitRow | null>(null);
@@ -88,16 +88,14 @@ export default function AdminVisitsPage() {
     }
   }
 
-  const filtered = visits.filter((v) =>
-    statusFilter ? v.status === statusFilter : true
-  );
+  const filtered = visits.filter((v) => {
+    if (statusFilter && v.status !== statusFilter) return false;
+    if (blockFilter && v.room?.block !== blockFilter) return false;
+    return true;
+  });
 
   function canDeny(status: string) {
     return status !== "denied";
-  }
-
-  function getVisitCode(visit: VisitRow): string {
-    return visit.invitation?.visit_code ?? "\u2014";
   }
 
   function getVisitorName(visit: VisitRow): string {
@@ -110,13 +108,6 @@ export default function AdminVisitsPage() {
   }
 
   const columns: Column<VisitRow>[] = [
-    {
-      key: "invitation_id",
-      label: "Code",
-      render: (row) => (
-        <span className="font-mono text-sm text-ink">{getVisitCode(row)}</span>
-      ),
-    },
     {
       key: "visitor_id",
       label: "Visitor",
@@ -178,17 +169,28 @@ export default function AdminVisitsPage() {
           onSearchChange={setSearch}
           searchPlaceholder="Search by code, visitor, or resident\u2026"
           filters={
-            <Select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-auto"
-            >
-              <option value="">All statuses</option>
-              <option value="authorized">Pending Approval</option>
-              <option value="approved">Active</option>
-              <option value="checked_out">Completed</option>
-              <option value="denied">Denied</option>
-            </Select>
+            <>
+              <Select
+                value={blockFilter}
+                onChange={(e) => setBlockFilter(e.target.value)}
+                className="w-auto"
+              >
+                <option value="">All blocks</option>
+                <option value="A">Block A</option>
+                <option value="B">Block B</option>
+              </Select>
+              <Select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-auto"
+              >
+                <option value="">All statuses</option>
+                <option value="authorized">Pending Approval</option>
+                <option value="checked_in">Active</option>
+                <option value="checked_out">Completed</option>
+                <option value="denied">Denied</option>
+              </Select>
+            </>
           }
         />
       </div>
@@ -211,9 +213,6 @@ export default function AdminVisitsPage() {
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-mono text-sm text-ink/50">
-                  {getVisitCode(selectedVisit)}
-                </p>
                 <div className="mt-1">
                   <StatusBadge
                     status={selectedVisit.status}
@@ -288,12 +287,6 @@ export default function AdminVisitsPage() {
               <h3 className="font-display text-lg text-ink">Invitation</h3>
               <div className="mt-3 grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="text-ink/50">Code</span>
-                  <p className="font-mono font-medium text-ink">
-                    {selectedVisit.invitation?.visit_code ?? "\u2014"}
-                  </p>
-                </div>
-                <div>
                   <span className="text-ink/50">Purpose</span>
                   <p className="font-medium text-ink">
                     {selectedVisit.invitation?.reason ?? "\u2014"}
@@ -329,7 +322,7 @@ export default function AdminVisitsPage() {
           if (denyTarget) handleDeny(denyTarget);
         }}
         title="Deny Visit"
-        message={`Are you sure you want to deny visit ${denyTarget ? getVisitCode(denyTarget) : ""}? This will prevent the visitor from checking in.`}
+        message={`Are you sure you want to deny this visit? This will prevent the visitor from checking in.`}
         confirmLabel="Deny Visit"
         variant="danger"
       />

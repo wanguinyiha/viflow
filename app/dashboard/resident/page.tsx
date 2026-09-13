@@ -49,7 +49,7 @@ export default function ResidentDashboard() {
       }
 
       const [active, pending, total, recent] = await Promise.all([
-        supabase.from("visits").select("*", { count: "exact", head: true }).eq("resident_id", profile.id).in("status", ["authorized", "approved"]),
+        supabase.from("visits").select("*", { count: "exact", head: true }).eq("resident_id", profile.id).in("status", ["checked_in"]),
         supabase.from("invitations").select("*", { count: "exact", head: true }).eq("resident_id", profile.id).eq("status", "pending"),
         supabase.from("visits").select("*", { count: "exact", head: true }).eq("resident_id", profile.id),
         supabase.from("visits").select("*, visitor:visitor_profiles(full_name), room:rooms(room_number, block)").eq("resident_id", profile.id).order("created_at", { ascending: false }).limit(5),

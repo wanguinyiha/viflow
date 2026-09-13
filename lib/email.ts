@@ -69,18 +69,17 @@ export async function sendInvitationEmail({
         </p>
         <div style="background: #F4EEDF; padding: 20px; border-radius: 8px; margin: 20px 0;">
           <p style="margin: 8px 0; color: #16233B;"><strong>Room:</strong> Block ${block} — Room ${roomNumber}</p>
-          <p style="margin: 8px 0; color: #16233B;"><strong>Visit Code:</strong> <span style="font-size: 18px; font-weight: bold;">${visitCode}</span></p>
-          <p style="margin: 8px 0; color: #16233B;"><strong>Valid From:</strong> ${new Date(visitStart).toLocaleDateString()} ${new Date(visitStart).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
-          <p style="margin: 8px 0; color: #16233B;"><strong>Valid Until:</strong> ${visitEnd ? new Date(visitEnd).toLocaleDateString() + " " + new Date(visitEnd).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Until check-out"}</p>
+          <p style="margin: 8px 0; color: #16233B;"><strong>Valid From:</strong> ${new Date(visitStart).toLocaleDateString()}</p>
+          ${visitEnd ? `<p style="margin: 8px 0; color: #16233B;"><strong>Valid Until:</strong> ${new Date(visitEnd).toLocaleDateString()}</p>` : ""}
         </div>
-        <p style="color: #666; font-size: 14px;">Present this visit code to the guard at the gate. You will need to register if this is your first visit.</p>
+        <p style="color: #666; font-size: 14px;">Click the button below to accept the invitation and complete your details. You will receive your visit code after registration.</p>
         <div style="text-align: center; margin: 30px 0;">
           <a href="${inviteUrl}" style="display: inline-block; background: #16233B; color: #F4EEDF; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px;">
-            View Invitation Details
+            Accept Invitation
           </a>
         </div>
         <p style="color: #999; font-size: 12px; margin-top: 30px; border-top: 1px solid #eee; padding-top: 15px;">
-          This invitation will expire${visitEnd ? ` on ${new Date(visitEnd).toLocaleDateString()} ${new Date(visitEnd).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : ""}. If you did not expect this invitation, please ignore this email.
+          This invitation will expire${visitEnd ? ` on ${new Date(visitEnd).toLocaleDateString()}` : ""}. If you did not expect this invitation, please ignore this email.
         </p>
       </div>
     </div>
@@ -90,7 +89,7 @@ export async function sendInvitationEmail({
     await transport.sendMail({
       from: `"ViFlow" <${FROM_EMAIL}>`,
       to: visitorEmail,
-      subject: `You've been invited to visit ${residentName} — Visit Code: ${visitCode}`,
+      subject: `You've been invited to visit ${residentName}`,
       html,
     });
     return { error: null };

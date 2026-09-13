@@ -12,9 +12,9 @@ interface VehicleRow {
   id: string;
   visitor_id: string;
   registration_number: string;
-  make: string | null;
-  model: string | null;
-  color: string | null;
+  // make: string | null;
+  // model: string | null;
+  // color: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -60,21 +60,21 @@ export default function AdminVehiclesPage() {
         </span>
       ),
     },
-    {
-      key: "make",
-      label: "Make",
-      render: (row) => row.make ?? "\u2014",
-    },
-    {
-      key: "model",
-      label: "Model",
-      render: (row) => row.model ?? "\u2014",
-    },
-    {
-      key: "color",
-      label: "Color",
-      render: (row) => row.color ?? "\u2014",
-    },
+    // {
+    //   key: "make",
+    //   label: "Make",
+    //   render: (row) => row.make ?? "\u2014",
+    // },
+    // {
+    //   key: "model",
+    //   label: "Model",
+    //   render: (row) => row.model ?? "\u2014",
+    // },
+    // {
+    //   key: "color",
+    //   label: "Color",
+    //   render: (row) => row.color ?? "\u2014",
+    // },
     {
       key: "visitor_id",
       label: "Visitor",
@@ -161,7 +161,7 @@ export default function AdminVehiclesPage() {
             <div className="border-t border-ink/10 pt-4">
               <h3 className="font-display text-lg text-ink">Vehicle Info</h3>
               <div className="mt-3 grid grid-cols-2 gap-4 text-sm">
-                <div>
+                {/* <div>
                   <span className="text-ink/50">Make</span>
                   <p className="font-medium text-ink">
                     {selectedVehicle.make ?? "\u2014"}
@@ -178,7 +178,7 @@ export default function AdminVehiclesPage() {
                   <p className="font-medium text-ink">
                     {selectedVehicle.color ?? "\u2014"}
                   </p>
-                </div>
+                </div> */}
                 <div>
                   <span className="text-ink/50">Registration</span>
                   <p className="font-mono font-medium text-ink">

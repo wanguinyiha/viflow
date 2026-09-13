@@ -99,11 +99,6 @@ export default function ReportsPage() {
 
   const visitColumns: Column<Visit & { visitor_name?: string }>[] = [
     {
-      key: "visit_code",
-      label: "Code",
-      render: (row) => <span className="font-mono text-xs text-ink/60">{(row as any).visit_code ?? "\u2014"}</span>,
-    },
-    {
       key: "visitor_name",
       label: "Visitor",
       render: (row) => (row as any).visitor_name ?? row.visitor?.full_name ?? "\u2014",

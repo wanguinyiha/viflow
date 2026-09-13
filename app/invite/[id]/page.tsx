@@ -203,12 +203,6 @@ export default function InvitePage() {
             )}
           </div>
 
-          <div className="mt-6 rounded-card border border-ink/15 bg-parchment p-4 text-center">
-            <p className="text-sm text-ink/60">Your Visit Code</p>
-            <p className="mt-2 font-mono text-2xl font-bold text-ink">{invitation.visit_code}</p>
-            <p className="mt-1 text-xs text-ink/40">Show this code to the guard at the gate</p>
-          </div>
-
           <div className="mt-8 space-y-3">
             <Link
               href={`/register?invitation=${invitation.id}`}
@@ -217,7 +211,7 @@ export default function InvitePage() {
               Accept Invitation
             </Link>
             <p className="text-center text-xs text-ink/40">
-              New to ViFlow? You will need to register first. Returning visitors can present their visit code directly.
+              Complete your details to receive your visit code.
             </p>
           </div>
         </div>

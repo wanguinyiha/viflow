@@ -14,7 +14,6 @@ import { useAuth } from "@/lib/context/AuthContext";
 
 interface InvitationRow {
   id: string;
-  visit_code: string;
   resident_id: string;
   visitor_id: string | null;
   visitor_email: string;
@@ -37,6 +36,7 @@ export default function AdminInvitationsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [blockFilter, setBlockFilter] = useState("");
 
   const [selectedInvitation, setSelectedInvitation] = useState<InvitationRow | null>(null);
   const [cancelTarget, setCancelTarget] = useState<InvitationRow | null>(null);
@@ -81,22 +81,24 @@ export default function AdminInvitationsPage() {
     }
   }
 
-  const filtered = invitations.filter((i) =>
-    statusFilter ? i.status === statusFilter : true
-  );
+  const filtered = invitations.filter((i) => {
+    if (statusFilter && i.status !== statusFilter) return false;
+    if (blockFilter && i.room?.block !== blockFilter) return false;
+    return true;
+  });
 
   function canCancel(status: string) {
     return status === "pending" || status === "accepted";
   }
 
   const columns: Column<InvitationRow>[] = [
-    {
-      key: "visit_code",
-      label: "Code",
-      render: (row) => (
-        <span className="font-mono text-sm text-ink">{row.visit_code}</span>
-      ),
-    },
+    // {
+    //   key: "visit_code",
+    //   label: "Code",
+    //   render: (row) => (
+    //     <span className="font-mono text-sm text-ink">{row.visit_code}</span>
+    //   ),
+    // },
     {
       key: "visitor_name",
       label: "Visitor",
@@ -106,6 +108,13 @@ export default function AdminInvitationsPage() {
       key: "resident_id",
       label: "Resident",
       render: (row) => row.resident?.full_name ?? "\u2014",
+    },
+    {
+      key: "room_id",
+      label: "Room",
+      render: (row) => row.room ? (
+        <span className="text-sm text-ink">Block {row.room.block} — Room {row.room.room_number.replace(/^[AB]-/, "")}</span>
+      ) : "\u2014",
     },
     {
       key: "reason",
@@ -161,17 +170,28 @@ export default function AdminInvitationsPage() {
           onSearchChange={setSearch}
           searchPlaceholder="Search by code, visitor, or resident\u2026"
           filters={
-            <Select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-auto"
-            >
-              <option value="">All statuses</option>
-              <option value="pending">Pending</option>
-              <option value="accepted">Accepted</option>
-              <option value="expired">Expired</option>
-              <option value="cancelled">Cancelled</option>
-            </Select>
+            <>
+              <Select
+                value={blockFilter}
+                onChange={(e) => setBlockFilter(e.target.value)}
+                className="w-auto"
+              >
+                <option value="">All blocks</option>
+                <option value="A">Block A</option>
+                <option value="B">Block B</option>
+              </Select>
+              <Select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-auto"
+              >
+                <option value="">All statuses</option>
+                <option value="pending">Pending</option>
+                <option value="accepted">Accepted</option>
+                <option value="expired">Expired</option>
+                <option value="cancelled">Cancelled</option>
+              </Select>
+            </>
           }
         />
       </div>
@@ -194,9 +214,6 @@ export default function AdminInvitationsPage() {
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-mono text-sm text-ink/50">
-                  {selectedInvitation.visit_code}
-                </p>
                 <div className="mt-1">
                   <StatusBadge
                     status={selectedInvitation.status}
@@ -248,6 +265,14 @@ export default function AdminInvitationsPage() {
             <div className="border-t border-ink/10 pt-4">
               <h3 className="font-display text-lg text-ink">Visit Details</h3>
               <div className="mt-3 grid grid-cols-2 gap-4 text-sm">
+                {selectedInvitation.room && (
+                  <div>
+                    <span className="text-ink/50">Room</span>
+                    <p className="font-medium text-ink">
+                      Block {selectedInvitation.room.block} — Room {selectedInvitation.room.room_number.replace(/^[AB]-/, "")}
+                    </p>
+                  </div>
+                )}
                 <div>
                   <span className="text-ink/50">Arrival Date</span>
                   <p className="font-medium text-ink">
@@ -300,7 +325,7 @@ export default function AdminInvitationsPage() {
           if (cancelTarget) handleCancel(cancelTarget);
         }}
         title="Cancel Invitation"
-        message={`Are you sure you want to cancel invitation ${cancelTarget?.visit_code}? This action cannot be undone.`}
+        message={`Are you sure you want to cancel this invitation? This action cannot be undone.`}
         confirmLabel="Cancel Invitation"
         variant="danger"
       />

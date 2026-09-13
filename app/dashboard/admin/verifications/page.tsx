@@ -20,7 +20,6 @@ interface VerificationRow {
   notes: string | null;
   created_at: string;
   visit?: {
-    visit_code: string;
     status: string;
   } | null;
   visitor?: {
@@ -68,15 +67,6 @@ export default function VerificationsPage() {
       key: "visitor_id",
       label: "Visitor",
       render: (row) => row.visitor?.full_name ?? "\u2014",
-    },
-    {
-      key: "visit_id",
-      label: "Visit Code",
-      render: (row) => (
-        <span className="font-mono text-sm text-ink">
-          {row.visit?.visit_code ?? "\u2014"}
-        </span>
-      ),
     },
     {
       key: "status",
@@ -202,12 +192,6 @@ export default function VerificationsPage() {
             <div className="border-t border-ink/10 pt-4">
               <h3 className="font-display text-lg text-ink">Visit</h3>
               <div className="mt-3 grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-ink/50">Visit Code</span>
-                  <p className="font-mono font-medium text-ink">
-                    {selectedVerification.visit?.visit_code ?? "\u2014"}
-                  </p>
-                </div>
                 <div>
                   <span className="text-ink/50">Visit Status</span>
                   <p className="font-medium text-ink capitalize">

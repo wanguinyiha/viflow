@@ -32,7 +32,7 @@ export default function GuardDashboard() {
       today.setHours(0, 0, 0, 0);
 
       const [inside, todayCount, pending, flagged, logs] = await Promise.all([
-        supabase.from("visits").select("*", { count: "exact", head: true }).in("status", ["approved"]),
+        supabase.from("visits").select("*", { count: "exact", head: true }).in("status", ["checked_in"]),
         supabase.from("visits").select("*", { count: "exact", head: true }).gte("created_at", today.toISOString()),
         supabase.from("visits").select("*", { count: "exact", head: true }).eq("status", "authorized"),
         supabase.from("activity_reviews").select("*", { count: "exact", head: true }).eq("status", "pending"),

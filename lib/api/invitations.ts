@@ -48,23 +48,37 @@ export async function createInvitation(invitation: {
   reason?: string;
   vehicle_registration?: string;
 }) {
-  // Append local timezone offset to datetime-local values so they store correctly as TIMESTAMPTZ
-  const tzOffset = (() => {
-    const offset = -new Date().getTimezoneOffset();
-    const sign = offset >= 0 ? "+" : "-";
-    const hours = String(Math.floor(Math.abs(offset) / 60)).padStart(2, "0");
-    const minutes = String(Math.abs(offset) % 60).padStart(2, "0");
-    return `${sign}${hours}:${minutes}`;
-  })();
+  // Convert date-only or datetime-local values to proper TIMESTAMPTZ format
+  const toTSTZ = (val: string | undefined): string | undefined => {
+    if (!val) return undefined;
+    // Already has timezone info
+    if (val.includes("Z") || val.includes("+") || (val.includes("-", 10))) return val;
+    // Date-only value (YYYY-MM-DD) - set to start of day in local timezone
+    if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+      const tzOffset = (() => {
+        const offset = -new Date().getTimezoneOffset();
+        const sign = offset >= 0 ? "+" : "-";
+        const hours = String(Math.floor(Math.abs(offset) / 60)).padStart(2, "0");
+        const minutes = String(Math.abs(offset) % 60).padStart(2, "0");
+        return `${sign}${hours}:${minutes}`;
+      })();
+      return val + "T00:00:00" + tzOffset;
+    }
+    // Datetime-local value (YYYY-MM-DDTHH:MM)
+    const tzOffset = (() => {
+      const offset = -new Date().getTimezoneOffset();
+      const sign = offset >= 0 ? "+" : "-";
+      const hours = String(Math.floor(Math.abs(offset) / 60)).padStart(2, "0");
+      const minutes = String(Math.abs(offset) % 60).padStart(2, "0");
+      return `${sign}${hours}:${minutes}`;
+    })();
+    return val + ":00" + tzOffset;
+  };
 
   const enriched = {
     ...invitation,
-    visit_start: invitation.visit_start && !invitation.visit_start.includes("Z") && !invitation.visit_start.includes("+") && !invitation.visit_start.includes("-", 10)
-      ? invitation.visit_start + ":00" + tzOffset
-      : invitation.visit_start,
-    visit_end: invitation.visit_end && !invitation.visit_end.includes("Z") && !invitation.visit_end.includes("+") && !invitation.visit_end.includes("-", 10)
-      ? invitation.visit_end + ":00" + tzOffset
-      : invitation.visit_end,
+    visit_start: toTSTZ(invitation.visit_start) ?? invitation.visit_start,
+    visit_end: toTSTZ(invitation.visit_end),
   };
 
   const { data, error } = await supabase
