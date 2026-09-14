@@ -22,5 +22,4 @@ README.md
 AGENTS.md
 CLAUDE.md
 eslint.config.mjs
-postcss.config.mjs
 tsconfig.tsbuildinfo
