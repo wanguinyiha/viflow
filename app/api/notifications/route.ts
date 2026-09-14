@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabaseServer";
+import { getSupabaseAdmin } from "@/lib/supabaseServer";
 
 export async function GET(req: NextRequest) {
+  const supabaseAdmin = getSupabaseAdmin();
   const userId = req.nextUrl.searchParams.get("userId");
   if (!userId) {
     return NextResponse.json({ error: "userId required" }, { status: 400 });
@@ -22,6 +23,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const supabaseAdmin = getSupabaseAdmin();
   const body = await req.json();
   const { userId, title, message, type, kind, entityType, entityId, link } = body as {
     userId: string;
@@ -59,6 +61,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  const supabaseAdmin = getSupabaseAdmin();
   const body = await req.json();
   const { ids, userId } = body as { ids?: string[]; userId?: string };
 

@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { sendInvitationEmail } from "@/lib/email";
-import { supabaseAdmin } from "@/lib/supabaseServer";
+import { getSupabaseAdmin } from "@/lib/supabaseServer";
 
 export async function POST(request: Request) {
+  const supabaseAdmin = getSupabaseAdmin();
   try {
     const body = await request.json();
     const { invitationId } = body;

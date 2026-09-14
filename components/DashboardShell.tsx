@@ -75,6 +75,9 @@ const navByRole: Record<string, NavEntry[]> = {
     { type: "single", label: "Reports", href: "/dashboard/admin/reports" },
     { type: "single", label: "Settings", href: "/dashboard/admin/settings" },
   ],
+  visitor: [
+    { type: "single", label: "Dashboard", href: "/dashboard/visitor" },
+  ],
 };
 
 function timeAgo(dateStr: string): string {

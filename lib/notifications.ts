@@ -1,4 +1,4 @@
-import { supabaseAdmin } from "@/lib/supabaseServer";
+import { getSupabaseAdmin } from "@/lib/supabaseServer";
 
 export type NotificationKind = "notification" | "alert";
 
@@ -26,6 +26,7 @@ export interface CreateNotificationOptions {
  * Idempotent: does not check for duplicates — caller should ensure uniqueness.
  */
 export async function createNotification(opts: CreateNotificationOptions) {
+  const supabaseAdmin = getSupabaseAdmin();
   const { error } = await supabaseAdmin.from("notifications").insert({
     user_id: opts.userId,
     title: opts.title,
@@ -48,6 +49,7 @@ export async function createNotifications(
   items: CreateNotificationOptions[]
 ) {
   if (items.length === 0) return { error: null };
+  const supabaseAdmin = getSupabaseAdmin();
   const { error } = await supabaseAdmin.from("notifications").insert(
     items.map((opts) => ({
       user_id: opts.userId,

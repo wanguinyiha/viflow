@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabaseServer";
+import { getSupabaseAdmin } from "@/lib/supabaseServer";
 
 export async function POST() {
+  const supabaseAdmin = getSupabaseAdmin();
   const log: string[] = [];
 
   // 0. Clean existing data

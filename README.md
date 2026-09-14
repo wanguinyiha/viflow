@@ -1,36 +1,140 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ViFlow
+
+A visitor management system built with Next.js, TypeScript, and Supabase.
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 22+
+- npm
+- A [Supabase](https://supabase.com) project (or run `supabase start` for local development)
+
+### Environment Setup
+
+Copy the example env file and fill in your Supabase credentials:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+copy .env.example .env
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Edit `.env` with your actual Supabase URL, anon key, and service role key.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Development
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm install
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+### Production (without Docker)
+
+```bash
+npm run build
+npm start
+```
+
+---
+
+## Docker
+
+### Prerequisites
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running
+
+### Environment Variables
+
+Copy the example env file and fill in your credentials:
+
+```bash
+copy .env.example .env
+```
+
+Required variables:
+
+| Variable | Description |
+|----------|-------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your Supabase anonymous/public key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Your Supabase service role key (server-side only) |
+| `NEXT_PUBLIC_APP_URL` | App base URL (default: `http://localhost:3000`) |
+
+Optional variables (emails are skipped if not set):
+
+| Variable | Description |
+|----------|-------------|
+| `SMTP_HOST` | SMTP server host |
+| `SMTP_PORT` | SMTP server port |
+| `SMTP_USER` | SMTP username |
+| `SMTP_PASSWORD` | SMTP password |
+
+### Build the Docker Image
+
+```bash
+docker compose build
+```
+
+### Start ViFlow
+
+```bash
+docker compose up
+```
+
+The app will be available at [http://localhost:3000](http://localhost:3000).
+
+### Start in the Background
+
+```bash
+docker compose up -d
+```
+
+### View Logs
+
+```bash
+docker compose logs -f
+```
+
+### Stop the Application
+
+```bash
+docker compose down
+```
+
+### Rebuild After Changes
+
+If you change source code, environment variables in `compose.yaml`, or dependencies:
+
+```bash
+docker compose up --build
+```
+
+To rebuild from scratch (no cache):
+
+```bash
+docker compose build --no-cache
+```
+
+---
+
+## Project Structure
+
+```
+viflow/
+├── app/                  # Next.js App Router pages and API routes
+├── components/           # React components
+├── lib/                  # Supabase clients, helpers, types
+├── public/               # Static assets
+├── supabase/             # Database migrations and config
+├── Dockerfile            # Multi-stage Docker build
+├── compose.yaml          # Docker Compose configuration
+├── .dockerignore         # Docker build context exclusions
+└── .env.example          # Environment variable template
+```
 
 ## Learn More
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [Next.js Documentation](https://nextjs.org/docs)
+- [Supabase Documentation](https://supabase.com/docs)
+- [Docker Documentation](https://docs.docker.com)

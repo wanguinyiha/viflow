@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabaseServer";
+import { getSupabaseAdmin } from "@/lib/supabaseServer";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
+  const supabaseAdmin = getSupabaseAdmin();
   const { searchParams } = new URL(request.url);
   const type = searchParams.get("type") ?? "stats";
   const limit = Math.min(parseInt(searchParams.get("limit") ?? "50", 10), 200);
