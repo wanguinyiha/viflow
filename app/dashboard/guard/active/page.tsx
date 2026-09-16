@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
+import FilterBar from "@/components/ui/FilterBar";
 import { showToast } from "@/components/ui/Toast";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/context/AuthContext";
@@ -13,6 +14,7 @@ export default function ActiveVisitorsPage() {
   const { user: profile, loading: authLoading } = useAuth();
   const [visits, setVisits] = useState<Visit[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     if (authLoading || !profile) return;
@@ -76,6 +78,19 @@ export default function ActiveVisitorsPage() {
     showToast("Visitor checked out.");
   }
 
+  const filteredVisits = useMemo(() => {
+    if (!search.trim()) return visits;
+    const q = search.toLowerCase();
+    return visits.filter((v) => {
+      const visitorName = (v.visitor as any)?.full_name?.toLowerCase() ?? "";
+      const visitorEmail = (v.visitor as any)?.email?.toLowerCase() ?? "";
+      const residentName = (v.resident as any)?.full_name?.toLowerCase() ?? "";
+      const roomBlock = v.room ? `block ${(v.room as any).block}` : "";
+      const roomNumber = v.room ? `room ${((v.room as any).room_number as string).replace(/^[AB]-/, "")}` : "";
+      return visitorName.includes(q) || visitorEmail.includes(q) || residentName.includes(q) || roomBlock.includes(q) || roomNumber.includes(q);
+    });
+  }, [visits, search]);
+
   if (authLoading || loading || !profile) {
     return (
       <DashboardShell role="guard" roleLabel="Guard" personName="Loading…">
@@ -89,8 +104,10 @@ export default function ActiveVisitorsPage() {
       <PageHeader title="Active Visitors" description="Visitors currently inside the hostel." />
 
       <div className="mt-8">
-        {visits.length === 0 ? (
-          <EmptyState title="No visitors inside" description="No visitors are currently checked in." />
+        <FilterBar search={search} onSearchChange={setSearch} searchPlaceholder="Search by visitor, resident, or room..." />
+
+        {filteredVisits.length === 0 ? (
+          <EmptyState title={search ? "No matching visitors" : "No visitors inside"} description={search ? "No visitors match your search." : "No visitors are currently checked in."} />
         ) : (
           <div className="overflow-hidden rounded-card border border-ink/15">
             <table className="w-full min-w-[600px] border-collapse text-left">
@@ -105,7 +122,7 @@ export default function ActiveVisitorsPage() {
                 </tr>
               </thead>
               <tbody>
-                {visits.map((v) => (
+                {filteredVisits.map((v) => (
                   <tr key={v.id} className="border-b border-ink/5 last:border-b-0">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
