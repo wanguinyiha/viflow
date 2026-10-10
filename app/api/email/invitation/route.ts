@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import { sendInvitationEmail } from "@/lib/email";
 import { getSupabaseAdmin } from "@/lib/supabaseServer";
+import { requireUser } from "@/lib/api-auth";
 
 export async function POST(request: Request) {
+  const auth = await requireUser(["resident", "admin"]);
+  if (!auth.ok) return auth.response;
+
   const supabaseAdmin = getSupabaseAdmin();
   try {
     const body = await request.json();
@@ -28,6 +32,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invitation not found" }, { status: 404 });
     }
 
+    if (auth.role !== "admin" && invitation.resident_id !== auth.userId) {
+      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
+    }
+
     const resident = invitation.resident as { full_name: string } | null;
     const room = invitation.room as { room_number: string; block: string } | null;
 
@@ -47,7 +55,6 @@ export async function POST(request: Request) {
       visitStart: invitation.visit_start,
       visitEnd: invitation.visit_end,
       invitationId: invitation.id,
-      visitCode: invitation.visit_code,
     });
 
     if (error) {

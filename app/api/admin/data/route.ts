@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabaseServer";
+import { requireUser } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
+  const auth = await requireUser(["admin"]);
+  if (!auth.ok) return auth.response;
+
   const supabaseAdmin = getSupabaseAdmin();
   const { searchParams } = new URL(request.url);
   const type = searchParams.get("type") ?? "stats";

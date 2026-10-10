@@ -36,7 +36,6 @@ export async function sendInvitationEmail({
   visitStart,
   visitEnd,
   invitationId,
-  visitCode,
 }: {
   visitorEmail: string;
   visitorName: string;
@@ -46,7 +45,6 @@ export async function sendInvitationEmail({
   visitStart: string;
   visitEnd: string;
   invitationId: string;
-  visitCode: string;
 }) {
   const transport = getTransporter();
   if (!transport) {

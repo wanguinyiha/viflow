@@ -1,7 +1,18 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabaseServer";
+import { requireUser } from "@/lib/api-auth";
 
 export async function POST() {
+  const auth = await requireUser(["admin"]);
+  if (!auth.ok) return auth.response;
+
+  if (process.env.NODE_ENV === "production" && process.env.ALLOW_SEED !== "true") {
+    return NextResponse.json(
+      { error: "Seeding is disabled in this environment" },
+      { status: 403 }
+    );
+  }
+
   const supabaseAdmin = getSupabaseAdmin();
   const log: string[] = [];
 

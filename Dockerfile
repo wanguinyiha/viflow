@@ -18,6 +18,11 @@ ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
 ARG NEXT_PUBLIC_APP_URL=http://localhost:3000
 
+# Fail fast instead of shipping an image with empty Supabase config.
+RUN test -n "$NEXT_PUBLIC_SUPABASE_URL" && test -n "$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
+  || { echo "ERROR: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY build args are required." \
+       "Set them in .env (docker compose reads it) or pass --build-arg." >&2; exit 1; }
+
 RUN npm run build
 
 # --- runner ---

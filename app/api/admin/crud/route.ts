@@ -1,14 +1,28 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabaseServer";
+import { requireUser } from "@/lib/api-auth";
 import { invitationCancelled, visitorDenied, adminVisitDenied, activityFlagged, roomChanged } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
 
+const GUARD_ACTIONS = new Set([
+  "verify_visitor_id",
+  "verify_visitor_photo",
+  "deny_visit",
+]);
+
 export async function POST(request: Request) {
+  const auth = await requireUser(["admin", "guard"]);
+  if (!auth.ok) return auth.response;
+
   const supabaseAdmin = getSupabaseAdmin();
   try {
     const body = await request.json();
     const { action, ...data } = body;
+
+    if (auth.role !== "admin" && !GUARD_ACTIONS.has(action)) {
+      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
+    }
 
     switch (action) {
       case "create_user": {

@@ -69,6 +69,9 @@ Optional variables (emails are skipped if not set):
 | `SMTP_PORT` | SMTP server port |
 | `SMTP_USER` | SMTP username |
 | `SMTP_PASSWORD` | SMTP password |
+| `ALLOW_SEED` | Set to `true` to allow `POST /api/seed` in production (still requires an admin login) |
+
+> `.env` is gitignored and holds real credentials. `.env.example` contains placeholders only — copy it and fill in your own values.
 
 ### Build the Docker Image
 
@@ -115,6 +118,18 @@ To rebuild from scratch (no cache):
 ```bash
 docker compose build --no-cache
 ```
+
+### Production Notes
+
+- Set `NEXT_PUBLIC_APP_URL` to your real domain before building. It is used for links in
+  invitation / password-reset emails and is **baked into the image at build time** —
+  after changing it in `.env`, always rebuild (`docker compose up --build`).
+- `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are build args: the build
+  fails fast if they are missing.
+- The build fails if the Supabase URL/keys are not provided.
+- `SUPABASE_SERVICE_ROLE_KEY` and `SMTP_*` are runtime-only env vars — they never end up in
+  the image, only in the running container.
+- `POST /api/seed` requires an admin login and is blocked in production unless `ALLOW_SEED=true`.
 
 ---
 
