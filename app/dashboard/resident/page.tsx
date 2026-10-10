@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import DashboardShell from "@/components/DashboardShell";
 import StatCard from "@/components/ui/StatCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -110,12 +111,12 @@ export default function ResidentDashboard() {
       </div>
 
       <div className="mt-8 flex flex-wrap gap-3">
-        <a href="/dashboard/resident/invitations/new" className="focus-ring rounded-card bg-ink px-5 py-2.5 text-sm font-medium text-parchment hover:bg-ink-light">
+        <Link href="/dashboard/resident/invitations/new" className="focus-ring rounded-card bg-ink px-5 py-2.5 text-sm font-medium text-parchment hover:bg-ink-light">
           Invite Visitor
-        </a>
-        <a href="/dashboard/resident/favourites" className="focus-ring rounded-card border border-ink/20 px-5 py-2.5 text-sm text-ink hover:border-ink/40">
+        </Link>
+        <Link href="/dashboard/resident/favourites" className="focus-ring rounded-card border border-ink/20 px-5 py-2.5 text-sm text-ink hover:border-ink/40">
           Favourite Visitors
-        </a>
+        </Link>
         <a href="/dashboard/resident/active" className="focus-ring rounded-card border border-ink/20 px-5 py-2.5 text-sm text-ink hover:border-ink/40">
           Active Visitors
         </a>

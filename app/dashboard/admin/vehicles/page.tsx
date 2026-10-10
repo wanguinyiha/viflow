@@ -25,6 +25,16 @@ interface VehicleRow {
   } | null;
 }
 
+async function fetchVehicleRows(): Promise<VehicleRow[]> {
+  try {
+    const res = await fetch("/api/admin/data?type=vehicles");
+    const data = await res.json();
+    return data.vehicles ?? [];
+  } catch {
+    return [];
+  }
+}
+
 export default function AdminVehiclesPage() {
   const { user: profile, loading: authLoading } = useAuth();
   const [vehicles, setVehicles] = useState<VehicleRow[]>([]);
@@ -35,20 +45,12 @@ export default function AdminVehiclesPage() {
 
   useEffect(() => {
     if (authLoading || !profile) return;
-    loadVehicles();
-  }, [authLoading, profile]);
-
-  async function loadVehicles() {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/admin/data?type=vehicles");
-      const data = await res.json();
-      setVehicles(data.vehicles ?? []);
-    } catch {
-      setVehicles([]);
+    async function fetchInitialVehicles() {
+      setVehicles(await fetchVehicleRows());
+      setLoading(false);
     }
-    setLoading(false);
-  }
+    fetchInitialVehicles();
+  }, [authLoading, profile]);
 
   const columns: Column<VehicleRow>[] = [
     {

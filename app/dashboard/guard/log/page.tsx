@@ -47,9 +47,9 @@ export default function VisitLogPage() {
 
   const columns: Column<LogEntry>[] = [
     { key: "created_at", label: "Time", render: (row) => new Date(row.created_at).toLocaleString(), sortable: true },
-    { key: "visitor", label: "Visitor", render: (row) => (row.visit as any)?.visitor?.full_name ?? "—" },
-    { key: "resident", label: "Resident", render: (row) => (row.visit as any)?.resident?.full_name ?? "—" },
-    { key: "room", label: "Room", render: (row) => (row.visit as any)?.room ? `${(row.visit as any).room.room_number}, ${(row.visit as any).room.block}` : "—" },
+    { key: "visitor", label: "Visitor", render: (row) => row.visit?.visitor?.full_name ?? "—" },
+    { key: "resident", label: "Resident", render: (row) => row.visit?.resident?.full_name ?? "—" },
+    { key: "room", label: "Room", render: (row) => (row.visit?.room ? `${row.visit.room.room_number}, ${row.visit.room.block}` : "—") },
     { key: "action", label: "Action", render: (row) => <StatusBadge status={row.action.replace("checked_", "")} type="visit" /> },
   ];
 

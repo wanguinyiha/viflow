@@ -8,7 +8,8 @@ import FilterBar from "@/components/ui/FilterBar";
 import SlideOver from "@/components/ui/SlideOver";
 import { Select } from "@/components/ui/FormField";
 import { useAuth } from "@/lib/context/AuthContext";
-import type { AuditLog, Profile } from "@/lib/types";
+import type { Profile } from "@/lib/types";
+
 
 interface AuditLogRow {
   id: string;

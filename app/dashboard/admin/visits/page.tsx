@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable, { type Column } from "@/components/ui/DataTable";
@@ -37,6 +37,16 @@ interface VisitRow {
   } | null;
 }
 
+async function fetchVisitRows(): Promise<VisitRow[]> {
+  try {
+    const res = await fetch("/api/admin/data?type=visits");
+    const data = await res.json();
+    return data.visits ?? [];
+  } catch {
+    return [];
+  }
+}
+
 export default function AdminVisitsPage() {
   const { user: profile, loading: authLoading } = useAuth();
   const [visits, setVisits] = useState<VisitRow[]>([]);
@@ -48,22 +58,20 @@ export default function AdminVisitsPage() {
   const [selectedVisit, setSelectedVisit] = useState<VisitRow | null>(null);
   const [denyTarget, setDenyTarget] = useState<VisitRow | null>(null);
 
+  const loadVisits = useCallback(async () => {
+    setLoading(true);
+    setVisits(await fetchVisitRows());
+    setLoading(false);
+  }, []);
+
   useEffect(() => {
     if (authLoading || !profile) return;
-    loadVisits();
-  }, [authLoading, profile]);
-
-  async function loadVisits() {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/admin/data?type=visits");
-      const data = await res.json();
-      setVisits(data.visits ?? []);
-    } catch {
-      setVisits([]);
+    async function fetchInitialVisits() {
+      setVisits(await fetchVisitRows());
+      setLoading(false);
     }
-    setLoading(false);
-  }
+    fetchInitialVisits();
+  }, [authLoading, profile]);
 
   async function handleDeny(visit: VisitRow) {
     try {

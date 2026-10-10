@@ -8,6 +8,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import FilterBar from "@/components/ui/FilterBar";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/context/AuthContext";
+import type { VisitorProfile } from "@/lib/types";
 
 interface VisitorRecord {
   id: string;
@@ -38,7 +39,7 @@ export default function MyVisitorsPage() {
 
       // Deduplicate visitors
       const visitorMap = new Map<string, VisitorRecord>();
-      (visits ?? []).forEach((v: any) => {
+      (visits ?? []).forEach((v: { visitor_id: string; visitor: VisitorProfile | null; created_at: string }) => {
         const vid = v.visitor_id;
         if (!visitorMap.has(vid) && v.visitor) {
           visitorMap.set(vid, {

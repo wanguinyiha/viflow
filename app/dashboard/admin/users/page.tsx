@@ -32,6 +32,74 @@ interface ResidentRow {
   room: { id: string; room_number: string; block: string; floor: number } | null;
 }
 
+interface VisitorListRow {
+  id?: string;
+  user_id?: string;
+  full_name: string;
+  email: string;
+  phone?: string | null;
+  created_at: string;
+  id_verified?: boolean;
+  photo_verified?: boolean;
+}
+
+interface CreateUserPayload {
+  action: "create_user";
+  email: string;
+  password: string;
+  fullName: string;
+  phone: string;
+  role: string;
+  roomId?: string;
+  studentNumber?: string;
+}
+
+async function fetchUserRows(): Promise<UserRow[]> {
+  try {
+    const [usersRes, residentsRes, visitorsRes] = await Promise.all([
+      fetch("/api/admin/data?type=users"),
+      fetch("/api/admin/data?type=residents"),
+      fetch("/api/admin/data?type=visitor_profiles"),
+    ]);
+    const usersData = await usersRes.json();
+    const residentsData = await residentsRes.json();
+    const visitorsData = await visitorsRes.json();
+
+    const residents: UserRow[] = (residentsData.residents ?? []).map((r: ResidentRow) => ({
+      id: r.profile?.id ?? r.user_id,
+      full_name: r.profile?.full_name ?? "Unknown",
+      email: r.profile?.email ?? "",
+      phone: r.profile?.phone ?? null,
+      role: "resident",
+      created_at: r.created_at,
+      rooms: r.room ? { room_number: r.room.room_number, block: r.room.block } : null,
+    }));
+
+    const visitors: UserRow[] = (visitorsData.visitors ?? []).map((v: VisitorListRow) => ({
+      id: v.user_id ?? v.id,
+      full_name: v.full_name,
+      email: v.email,
+      phone: v.phone,
+      role: "visitor",
+      created_at: v.created_at,
+      id_verified: v.id_verified,
+      photo_verified: v.photo_verified,
+    }));
+
+    const guards: UserRow[] = (usersData.users ?? [])
+      .filter((u: UserRow) => u.role === "guard")
+      .map((u: UserRow) => ({ ...u }));
+
+    const admins: UserRow[] = (usersData.users ?? [])
+      .filter((u: UserRow) => u.role === "admin")
+      .map((u: UserRow) => ({ ...u }));
+
+    return [...admins, ...residents, ...visitors, ...guards];
+  } catch {
+    return [];
+  }
+}
+
 const ROLE_TABS = ["all", "resident", "visitor", "guard", "admin"] as const;
 const ROLE_COLORS: Record<string, string> = {
   admin: "bg-brass/20 text-ink",
@@ -58,56 +126,18 @@ export default function UsersPage() {
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
-    try {
-      const [usersRes, residentsRes, visitorsRes] = await Promise.all([
-        fetch("/api/admin/data?type=users"),
-        fetch("/api/admin/data?type=residents"),
-        fetch("/api/admin/data?type=visitor_profiles"),
-      ]);
-      const usersData = await usersRes.json();
-      const residentsData = await residentsRes.json();
-      const visitorsData = await visitorsRes.json();
-
-      const residents: UserRow[] = (residentsData.residents ?? []).map((r: ResidentRow) => ({
-        id: r.profile?.id ?? r.user_id,
-        full_name: r.profile?.full_name ?? "Unknown",
-        email: r.profile?.email ?? "",
-        phone: r.profile?.phone ?? null,
-        role: "resident",
-        created_at: r.created_at,
-        rooms: r.room ? { room_number: r.room.room_number, block: r.room.block } : null,
-      }));
-
-      const visitors: UserRow[] = (visitorsData.visitors ?? []).map((v: any) => ({
-        id: v.user_id ?? v.id,
-        full_name: v.full_name,
-        email: v.email,
-        phone: v.phone,
-        role: "visitor",
-        created_at: v.created_at,
-        id_verified: v.id_verified,
-        photo_verified: v.photo_verified,
-      }));
-
-      const guards: UserRow[] = (usersData.users ?? [])
-        .filter((u: UserRow) => u.role === "guard")
-        .map((u: UserRow) => ({ ...u }));
-
-      const admins: UserRow[] = (usersData.users ?? [])
-        .filter((u: UserRow) => u.role === "admin")
-        .map((u: UserRow) => ({ ...u }));
-
-      setUsers([...admins, ...residents, ...visitors, ...guards]);
-    } catch {
-      setUsers([]);
-    }
+    setUsers(await fetchUserRows());
     setLoading(false);
   }, []);
 
   useEffect(() => {
     if (authLoading || !profile) return;
-    loadUsers();
-  }, [authLoading, profile, loadUsers]);
+    async function fetchInitialUsers() {
+      setUsers(await fetchUserRows());
+      setLoading(false);
+    }
+    fetchInitialUsers();
+  }, [authLoading, profile]);
 
   async function loadAvailableRooms() {
     try {
@@ -123,7 +153,7 @@ export default function UsersPage() {
     e.preventDefault();
     setCreating(true);
     try {
-      const payload: any = {
+      const payload: CreateUserPayload = {
         action: "create_user",
         email: form.email,
         password: form.password,

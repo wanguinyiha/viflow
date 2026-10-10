@@ -6,6 +6,17 @@ import SlideOver from "@/components/ui/SlideOver";
 import { useAuth } from "@/lib/context/AuthContext";
 import type { VisitorProfile } from "@/lib/types";
 
+async function fetchVisitorRows(): Promise<VisitorProfile[]> {
+  try {
+    const res = await fetch("/api/admin/data?type=visitors");
+    const data = await res.json();
+    return data.visitors ?? [];
+  } catch {
+    return [];
+  }
+}
+
+
 export default function AdminVisitorsPage() {
   const { user: profile, loading: authLoading } = useAuth();
   const [visitors, setVisitors] = useState<VisitorProfile[]>([]);
@@ -17,20 +28,13 @@ export default function AdminVisitorsPage() {
 
   useEffect(() => {
     if (authLoading || !profile) return;
-    loadVisitors();
+    async function fetchInitialVisitors() {
+      setVisitors(await fetchVisitorRows());
+      setLoading(false);
+    }
+    fetchInitialVisitors();
   }, [authLoading, profile]);
 
-  async function loadVisitors() {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/admin/data?type=visitors");
-      const data = await res.json();
-      setVisitors(data.visitors ?? []);
-    } catch {
-      setVisitors([]);
-    }
-    setLoading(false);
-  }
 
   const filtered = visitors.filter((v) => {
     if (!search) return true;

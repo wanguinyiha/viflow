@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import PageHeader from "@/components/ui/PageHeader";
 import { showToast } from "@/components/ui/Toast";
@@ -11,11 +11,12 @@ export default function ResidentSettingsPage() {
   const { user: profile, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (profile) {
-      setLoading(false);
-    }
-  }, [profile]);
+  // Stop showing the loading state once the profile has resolved.
+  const [syncedProfile, setSyncedProfile] = useState(profile);
+  if (profile !== syncedProfile) {
+    setSyncedProfile(profile);
+    if (profile) setLoading(false);
+  }
 
   async function handlePasswordChange() {
     if (!profile?.email) return;

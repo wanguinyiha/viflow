@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState, useCallback } from "react";
 import DashboardShell from "@/components/DashboardShell";
@@ -8,6 +8,16 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { showToast } from "@/components/ui/Toast";
 import { useAuth } from "@/lib/context/AuthContext";
 import type { Profile } from "@/lib/types";
+
+async function fetchGuardRows(): Promise<Profile[]> {
+  try {
+    const res = await fetch("/api/admin/data?type=guards");
+    const data = await res.json();
+    return data.guards ?? [];
+  } catch {
+    return [];
+  }
+}
 
 export default function GuardsPage() {
   const { user: profile, loading: authLoading } = useAuth();
@@ -28,20 +38,18 @@ export default function GuardsPage() {
 
   const loadGuards = useCallback(async () => {
     setLoading(true);
-    try {
-      const res = await fetch("/api/admin/data?type=guards");
-      const data = await res.json();
-      setGuards(data.guards ?? []);
-    } catch {
-      setGuards([]);
-    }
+    setGuards(await fetchGuardRows());
     setLoading(false);
   }, []);
 
   useEffect(() => {
     if (authLoading || !profile) return;
-    loadGuards();
-  }, [authLoading, profile, loadGuards]);
+    async function fetchInitialGuards() {
+      setGuards(await fetchGuardRows());
+      setLoading(false);
+    }
+    fetchInitialGuards();
+  }, [authLoading, profile]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -161,7 +169,7 @@ export default function GuardsPage() {
                   </div>
                 </td>
                 <td className="px-4 py-3 text-ink/60">{g.email}</td>
-                <td className="px-4 py-3 text-ink/60">{g.phone || "—"}</td>
+                <td className="px-4 py-3 text-ink/60">{g.phone || "�"}</td>
                 <td className="px-4 py-3 text-ink/50">{new Date(g.created_at).toLocaleDateString()}</td>
                 <td className="px-4 py-3 text-right">
                   <button
@@ -271,7 +279,7 @@ export default function GuardsPage() {
               </div>
               <div>
                 <span className="text-ink/50">Phone</span>
-                <p className="font-medium text-ink">{selectedGuard.phone || "—"}</p>
+                <p className="font-medium text-ink">{selectedGuard.phone || "�"}</p>
               </div>
               <div>
                 <span className="text-ink/50">Created</span>

@@ -7,7 +7,10 @@ import StatCard from "@/components/ui/StatCard";
 import DataTable, { type Column } from "@/components/ui/DataTable";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useAuth } from "@/lib/context/AuthContext";
-import type { DashboardStats, Visit, Invitation } from "@/lib/types";
+import type { Visit, Invitation } from "@/lib/types";
+
+type RecentVisit = Visit & { visitor_name?: string };
+
 
 interface StatsData {
   totalVisitors: number;
@@ -91,18 +94,19 @@ export default function ReportsPage() {
     return Object.entries(counts).sort((a, b) => b[1] - a[1]);
   }, [invitations]);
 
-  const recentVisits = useMemo(() => {
+  const recentVisits = useMemo<RecentVisit[]>(() => {
     return [...visits]
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 10);
   }, [visits]);
 
-  const visitColumns: Column<Visit & { visitor_name?: string }>[] = [
+  const visitColumns: Column<RecentVisit>[] = [
     {
       key: "visitor_name",
       label: "Visitor",
-      render: (row) => (row as any).visitor_name ?? row.visitor?.full_name ?? "\u2014",
+      render: (row) => row.visitor_name ?? row.visitor?.full_name ?? "—",
     },
+
     {
       key: "status",
       label: "Status",
@@ -194,7 +198,8 @@ export default function ReportsPage() {
           {recentVisits.length === 0 ? (
             <p className="text-sm text-ink/40 rounded-card border border-ink/10 p-4">No recent visits.</p>
           ) : (
-            <DataTable columns={visitColumns} data={recentVisits as any} pageSize={10} emptyMessage="No visits." />
+            <DataTable columns={visitColumns} data={recentVisits} pageSize={10} emptyMessage="No visits." />
+
           )}
         </div>
       </div>

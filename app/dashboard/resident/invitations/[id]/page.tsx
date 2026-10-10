@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import DashboardShell from "@/components/DashboardShell";
 import PageHeader from "@/components/ui/PageHeader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -13,7 +13,6 @@ import type { Invitation } from "@/lib/types";
 
 export default function InvitationDetailPage() {
   const params = useParams();
-  const router = useRouter();
  const { user: profile, loading: authLoading } = useAuth();
   const [invitation, setInvitation] = useState<Invitation | null>(null);
   const [loading, setLoading] = useState(true);

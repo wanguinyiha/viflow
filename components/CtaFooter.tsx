@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function CtaFooter() {
   return (
     <>
@@ -11,12 +13,12 @@ export default function CtaFooter() {
             visitors a faster, better-recorded way through the gate.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-            <a
+            <Link
               href="/login"
               className="focus-ring rounded-card bg-ink px-6 py-3.5 font-body text-[15px] font-medium text-parchment transition-colors hover:bg-ink-light"
             >
               Log in
-            </a>
+            </Link>
           </div>
         </div>
       </section>
@@ -31,12 +33,12 @@ export default function CtaFooter() {
             </p>
           </div>
           <div className="grid grid-cols-2 gap-x-12 gap-y-2 text-sm sm:grid-cols-3">
-            <a href="/#how-it-works" className="focus-ring rounded-sm hover:text-parchment">How it works</a>
-            <a href="/#roles" className="focus-ring rounded-sm hover:text-parchment">Who it&apos;s for</a>
-            <a href="/#faq" className="focus-ring rounded-sm hover:text-parchment">Questions</a>
-            <a href="/dashboard/admin" className="focus-ring rounded-sm hover:text-parchment">Admin</a>
-            <a href="/dashboard/resident" className="focus-ring rounded-sm hover:text-parchment">Resident</a>
-            <a href="/dashboard/guard" className="focus-ring rounded-sm hover:text-parchment">Guard</a>
+            <Link href="/#how-it-works" className="focus-ring rounded-sm hover:text-parchment">How it works</Link>
+            <Link href="/#roles" className="focus-ring rounded-sm hover:text-parchment">Who it&apos;s for</Link>
+            <Link href="/#faq" className="focus-ring rounded-sm hover:text-parchment">Questions</Link>
+            <Link href="/dashboard/admin" className="focus-ring rounded-sm hover:text-parchment">Admin</Link>
+            <Link href="/dashboard/resident" className="focus-ring rounded-sm hover:text-parchment">Resident</Link>
+            <Link href="/dashboard/guard" className="focus-ring rounded-sm hover:text-parchment">Guard</Link>
           </div>
         </div>
         <div className="border-t border-parchment/10 px-6 py-5 text-xs text-parchment/50 md:px-10">

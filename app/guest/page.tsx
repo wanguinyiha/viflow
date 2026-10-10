@@ -5,20 +5,21 @@ export default function GuestPage() {
     <div className="min-h-screen bg-parchment">
       <header className="border-b border-ink/10 bg-parchment-dim/50">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
-          <a href="/" className="flex items-center gap-2 focus-ring rounded-sm">
+          <Link href="/" className="flex items-center gap-2 focus-ring rounded-sm">
             <svg width="24" height="24" viewBox="0 0 26 26" fill="none" aria-hidden="true">
               <rect x="1" y="1" width="24" height="24" rx="3" stroke="#16233B" strokeWidth="1.5" />
               <path d="M6 9.5L13 17L20 6" stroke="#B8863B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            <span className="font-display text-lg italic text-ink">ViFlow</span>
-          </a>
+            <span className="font-display text-lg italic text-ink">ViFlow            </span>
+          </Link>
+
           <div className="flex items-center gap-3">
-            <a href="/login" className="focus-ring rounded-sm px-4 py-2 text-sm font-medium text-ink hover:bg-ink/5">
+            <Link href="/login" className="focus-ring rounded-sm px-4 py-2 text-sm font-medium text-ink hover:bg-ink/5">
               Log in
-            </a>
-            <a href="/register" className="focus-ring rounded-card bg-ink px-4 py-2 text-sm font-medium text-parchment hover:bg-ink-light">
+            </Link>
+            <Link href="/register" className="focus-ring rounded-card bg-ink px-4 py-2 text-sm font-medium text-parchment hover:bg-ink-light">
               Register
-            </a>
+            </Link>
           </div>
         </div>
       </header>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 
 interface InvitationData {
@@ -21,7 +21,6 @@ interface InvitationData {
 
 export default function InvitePage() {
   const params = useParams();
-  const router = useRouter();
   const [invitation, setInvitation] = useState<InvitationData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -69,7 +68,6 @@ export default function InvitePage() {
     );
   }
 
-  const now = new Date();
   const start = new Date(invitation.visit_start);
 
   if (invitation.status === "expired") {
@@ -157,13 +155,13 @@ export default function InvitePage() {
     <div className="flex min-h-screen items-center justify-center bg-parchment px-6">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <a href="/" className="inline-flex items-center gap-2">
+          <Link href="/" className="inline-flex items-center gap-2">
             <svg width="24" height="24" viewBox="0 0 26 26" fill="none" aria-hidden="true">
               <rect x="1" y="1" width="24" height="24" rx="3" stroke="#16233B" strokeWidth="1.5" />
               <path d="M6 9.5L13 17L20 6" stroke="#B8863B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             <span className="font-display text-xl italic text-ink">ViFlow</span>
-          </a>
+          </Link>
         </div>
 
         <div className="rounded-card border border-ink/15 bg-parchment-dim p-8">

@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import FormField, { Input, Select } from "@/components/ui/FormField";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -161,13 +162,13 @@ function RegisterContent() {
     <div className="min-h-screen bg-parchment">
       <div className="mx-auto max-w-2xl px-6 py-12">
         <div className="mb-8 text-center">
-          <a href="/" className="inline-flex items-center gap-2">
+          <Link href="/" className="inline-flex items-center gap-2">
             <svg width="24" height="24" viewBox="0 0 26 26" fill="none" aria-hidden="true">
               <rect x="1" y="1" width="24" height="24" rx="3" stroke="#16233B" strokeWidth="1.5" />
               <path d="M6 9.5L13 17L20 6" stroke="#B8863B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             <span className="font-display text-xl italic text-ink">ViFlow</span>
-          </a>
+          </Link>
           <p className="mt-4 font-mono text-[13px] text-brass-dark">Visitor Registration</p>
           {inviteInfo && (
             <p className="mt-2 text-sm text-ink/50">
@@ -320,9 +321,9 @@ function RegisterContent() {
               >
                 {submitting ? "Submitting…" : "Complete Registration"}
               </button>
-              <a href="/" className="focus-ring rounded-card border border-ink/20 px-5 py-2.5 text-sm text-ink hover:border-ink/40">
+              <Link href="/" className="focus-ring rounded-card border border-ink/20 px-5 py-2.5 text-sm text-ink hover:border-ink/40">
                 Cancel
-              </a>
+              </Link>
             </div>
           </form>
         )}

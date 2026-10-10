@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import VisitorPass from "@/components/ui/VisitorPass";
 
 interface InvitationData {
@@ -59,13 +60,13 @@ export default function PassPage() {
     <div className="flex min-h-screen items-center justify-center bg-parchment px-6 py-12">
       <div className="text-center">
         <div className="mb-6">
-          <a href="/" className="inline-flex items-center gap-2">
+          <Link href="/" className="inline-flex items-center gap-2">
             <svg width="24" height="24" viewBox="0 0 26 26" fill="none" aria-hidden="true">
               <rect x="1" y="1" width="24" height="24" rx="3" stroke="#16233B" strokeWidth="1.5" />
               <path d="M6 9.5L13 17L20 6" stroke="#B8863B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             <span className="font-display text-xl italic text-ink">ViFlow</span>
-          </a>
+          </Link>
         </div>
 
         <VisitorPass

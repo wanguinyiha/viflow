@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import PageHeader from "@/components/ui/PageHeader";
 import FormField, { Input } from "@/components/ui/FormField";
@@ -15,13 +15,16 @@ export default function ResidentProfilePage() {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
 
-  useEffect(() => {
+  // Copy the loaded profile into the form (state-adjustment-during-render).
+  const [syncedProfile, setSyncedProfile] = useState(profile);
+  if (profile !== syncedProfile) {
+    setSyncedProfile(profile);
     if (profile) {
       setFullName(profile.full_name);
       setPhone(profile.phone ?? "");
       setLoading(false);
     }
-  }, [profile]);
+  }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();

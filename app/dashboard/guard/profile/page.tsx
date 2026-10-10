@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import PageHeader from "@/components/ui/PageHeader";
 import FormField, { Input } from "@/components/ui/FormField";
@@ -14,12 +14,13 @@ export default function GuardProfilePage() {
   const [phone, setPhone] = useState("");
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    if (profile) {
-      setFullName(profile.full_name ?? "");
-      setPhone(profile.phone ?? "");
-    }
-  }, [profile]);
+  // Copy the loaded profile into the form (state-adjustment-during-render).
+  const [syncedProfile, setSyncedProfile] = useState(profile);
+  if (profile !== syncedProfile) {
+    setSyncedProfile(profile);
+    setFullName(profile?.full_name ?? "");
+    setPhone(profile?.phone ?? "");
+  }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();

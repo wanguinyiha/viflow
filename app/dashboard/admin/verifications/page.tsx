@@ -32,6 +32,16 @@ interface VerificationRow {
   } | null;
 }
 
+async function fetchVerificationRows(): Promise<VerificationRow[]> {
+  try {
+    const res = await fetch("/api/admin/data?type=verifications");
+    const data = await res.json();
+    return data.verifications ?? [];
+  } catch {
+    return [];
+  }
+}
+
 export default function VerificationsPage() {
   const { user: profile, loading: authLoading } = useAuth();
   const [verifications, setVerifications] = useState<VerificationRow[]>([]);
@@ -43,20 +53,12 @@ export default function VerificationsPage() {
 
   useEffect(() => {
     if (authLoading || !profile) return;
-    loadVerifications();
-  }, [authLoading, profile]);
-
-  async function loadVerifications() {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/admin/data?type=verifications");
-      const data = await res.json();
-      setVerifications(data.verifications ?? []);
-    } catch {
-      setVerifications([]);
+    async function fetchInitialVerifications() {
+      setVerifications(await fetchVerificationRows());
+      setLoading(false);
     }
-    setLoading(false);
-  }
+    fetchInitialVerifications();
+  }, [authLoading, profile]);
 
   const filtered = verifications.filter((v) =>
     statusFilter ? v.status === statusFilter : true

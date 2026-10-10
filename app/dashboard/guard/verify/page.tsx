@@ -90,7 +90,7 @@ export default function VerifyVisitorPage() {
             reason: invitation.reason,
             vehicle_registration: invitation.vehicle_registration,
           },
-        } as any;
+        } as typeof data;
       }
     }
 
@@ -110,7 +110,7 @@ export default function VerifyVisitorPage() {
         .eq("registration_number", data.invitation.vehicle_registration)
         .single();
       if (vehicle) {
-        enrichedData = { ...enrichedData, vehicle } as any;
+        enrichedData = { ...enrichedData, vehicle };
       }
     }
 

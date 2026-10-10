@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable, { type Column } from "@/components/ui/DataTable";
@@ -30,6 +30,16 @@ interface InvitationRow {
   room?: { room_number: string; block: string } | null;
 }
 
+async function fetchInvitationRows(): Promise<InvitationRow[]> {
+  try {
+    const res = await fetch("/api/admin/data?type=invitations");
+    const data = await res.json();
+    return data.invitations ?? [];
+  } catch {
+    return [];
+  }
+}
+
 export default function AdminInvitationsPage() {
   const { user: profile, loading: authLoading } = useAuth();
   const [invitations, setInvitations] = useState<InvitationRow[]>([]);
@@ -41,22 +51,20 @@ export default function AdminInvitationsPage() {
   const [selectedInvitation, setSelectedInvitation] = useState<InvitationRow | null>(null);
   const [cancelTarget, setCancelTarget] = useState<InvitationRow | null>(null);
 
+  const loadInvitations = useCallback(async () => {
+    setLoading(true);
+    setInvitations(await fetchInvitationRows());
+    setLoading(false);
+  }, []);
+
   useEffect(() => {
     if (authLoading || !profile) return;
-    loadInvitations();
-  }, [authLoading, profile]);
-
-  async function loadInvitations() {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/admin/data?type=invitations");
-      const data = await res.json();
-      setInvitations(data.invitations ?? []);
-    } catch {
-      setInvitations([]);
+    async function fetchInitialInvitations() {
+      setInvitations(await fetchInvitationRows());
+      setLoading(false);
     }
-    setLoading(false);
-  }
+    fetchInitialInvitations();
+  }, [authLoading, profile]);
 
   async function handleCancel(invitation: InvitationRow) {
     try {

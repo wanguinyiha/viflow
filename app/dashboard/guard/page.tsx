@@ -108,7 +108,7 @@ export default function GuardDashboard() {
                 {log.map((l) => (
                   <tr key={l.id} className="border-b border-ink/5 last:border-b-0">
                     <td className="px-4 py-3 font-mono text-sm text-ink/70">{new Date(l.created_at).toLocaleTimeString()}</td>
-                    <td className="px-4 py-3 text-[15px] text-ink">{(l.visit as any)?.visitor?.full_name ?? "—"}</td>
+                    <td className="px-4 py-3 text-[15px] text-ink">{l.visit?.visitor?.full_name ?? "—"}</td>
                     <td className="px-4 py-3 text-sm text-sage-dim capitalize">{l.action.replace(/_/g, " ")}</td>
                   </tr>
                 ))}

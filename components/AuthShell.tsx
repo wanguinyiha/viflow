@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function AuthShell({
   eyebrow,
   title,
@@ -14,13 +16,13 @@ export default function AuthShell({
   return (
     <div className="grid min-h-screen md:grid-cols-2">
       <div className="flex flex-col justify-center px-6 py-16 sm:px-10 md:px-16 lg:px-24">
-        <a href="/" className="mb-10 flex items-center gap-2 focus-ring w-fit rounded-sm">
+        <Link href="/" className="mb-10 flex items-center gap-2 focus-ring w-fit rounded-sm">
           <svg width="24" height="24" viewBox="0 0 26 26" fill="none" aria-hidden="true">
             <rect x="1" y="1" width="24" height="24" rx="3" stroke="#16233B" strokeWidth="1.5" />
             <path d="M6 9.5L13 17L20 6" stroke="#B8863B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           <span className="font-display text-lg italic text-ink">ViFlow</span>
-        </a>
+        </Link>
 
         <p className="font-mono text-[13px] text-brass-dark">{eyebrow}</p>
         <h1 className="mt-2 font-display text-3xl italic text-ink sm:text-4xl">{title}</h1>

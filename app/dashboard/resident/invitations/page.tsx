@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import DashboardShell from "@/components/DashboardShell";
 import PageHeader from "@/components/ui/PageHeader";
 import DataTable, { type Column } from "@/components/ui/DataTable";
@@ -64,9 +65,9 @@ export default function InvitationsPage() {
         title="Invitations"
         description="All invitations you have created."
         action={
-          <a href="/dashboard/resident/invitations/new" className="focus-ring rounded-card bg-ink px-4 py-2 text-sm font-medium text-parchment hover:bg-ink-light">
+          <Link href="/dashboard/resident/invitations/new" className="focus-ring rounded-card bg-ink px-4 py-2 text-sm font-medium text-parchment hover:bg-ink-light">
             New Invitation
-          </a>
+          </Link>
         }
       />
 
@@ -94,9 +95,9 @@ export default function InvitationsPage() {
             title="No invitations yet"
             description="Create your first invitation to get started."
             action={
-              <a href="/dashboard/resident/invitations/new" className="focus-ring rounded-card bg-ink px-4 py-2 text-sm font-medium text-parchment hover:bg-ink-light">
+              <Link href="/dashboard/resident/invitations/new" className="focus-ring rounded-card bg-ink px-4 py-2 text-sm font-medium text-parchment hover:bg-ink-light">
                 Create Invitation
-              </a>
+              </Link>
             }
           />
         ) : (

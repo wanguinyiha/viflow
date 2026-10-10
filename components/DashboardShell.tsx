@@ -1,7 +1,8 @@
 ﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/context/AuthContext";
 
@@ -102,6 +103,7 @@ export default function DashboardShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { user: authUser } = useAuth();
   const items = navByRole[role];
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -112,9 +114,22 @@ export default function DashboardShell({
   const panelRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
+  // Close the mobile sidebar and expand the group containing the new page
+  // when the route changes (state-adjustment-during-render pattern).
+  const [prevPathname, setPrevPathname] = useState(pathname);
+  if (prevPathname !== pathname) {
+    setPrevPathname(pathname);
     setSidebarOpen(false);
-  }, [pathname]);
+    setExpandedGroups((prev) => {
+      const next = { ...prev };
+      items.forEach((item) => {
+        if (item.type === "group" && item.items.some((child) => pathname.startsWith(child.href))) {
+          next[item.label] = true;
+        }
+      });
+      return next;
+    });
+  }
 
   // Close panel on outside click
   useEffect(() => {
@@ -209,22 +224,10 @@ export default function DashboardShell({
   function handleNotificationClick(n: Notification) {
     if (!n.read) markRead(n.id);
     if (n.link) {
-      window.location.href = n.link;
+      router.push(n.link);
     }
     setPanelOpen(false);
   }
-
-  // Auto-expand groups that contain the active page
-  useEffect(() => {
-    const newExpanded: Record<string, boolean> = {};
-    items.forEach((item) => {
-      if (item.type === "group") {
-        const hasActive = item.items.some((child) => pathname.startsWith(child.href));
-        if (hasActive) newExpanded[item.label] = true;
-      }
-    });
-    setExpandedGroups((prev) => ({ ...prev, ...newExpanded }));
-  }, [pathname, items]);
 
   function toggleGroup(label: string) {
     setExpandedGroups((prev) => ({ ...prev, [label]: !prev[label] }));
@@ -238,7 +241,7 @@ export default function DashboardShell({
   function renderItem(entry: NavEntry, depth = 0) {
     if (entry.type === "single") {
       return (
-        <a
+        <Link
           key={entry.label}
           href={entry.href}
           className={`focus-ring rounded-sm px-3 py-2 text-[15px] transition-colors ${
@@ -250,7 +253,7 @@ export default function DashboardShell({
           }`}
         >
           {entry.label}
-        </a>
+        </Link>
       );
     }
 
@@ -284,7 +287,7 @@ export default function DashboardShell({
         {isExpanded && (
           <div className="ml-1 mt-0.5 space-y-0.5">
             {entry.items.map((child) => (
-              <a
+              <Link
                 key={child.href}
                 href={child.href}
                 className={`focus-ring block rounded-sm px-3 py-1.5 text-[14px] transition-colors ${
@@ -294,7 +297,7 @@ export default function DashboardShell({
                 }`}
               >
                 {child.label}
-              </a>
+              </Link>
             ))}
           </div>
         )}
@@ -315,13 +318,13 @@ export default function DashboardShell({
             <path d="M3 7h18M3 12h18M3 17h18" />
           </svg>
         </button>
-        <a href="/" className="flex items-center gap-2">
+        <Link href="/" className="flex items-center gap-2">
           <svg width="20" height="20" viewBox="0 0 26 26" fill="none" aria-hidden="true">
             <rect x="1" y="1" width="24" height="24" rx="3" stroke="#F4EEDF" strokeWidth="1.5" />
             <path d="M6 9.5L13 17L20 6" stroke="#D3A65C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           <span className="font-display text-lg italic">ViFlow</span>
-        </a>
+        </Link>
         <div className="w-8" />
       </div>
 
@@ -341,13 +344,13 @@ export default function DashboardShell({
           }`}
         >
           <div className="flex items-center justify-between px-6 py-6">
-            <a href="/" className="flex items-center gap-2 focus-ring w-fit rounded-sm">
+            <Link href="/" className="flex items-center gap-2 focus-ring w-fit rounded-sm">
               <svg width="22" height="22" viewBox="0 0 26 26" fill="none" aria-hidden="true">
                 <rect x="1" y="1" width="24" height="24" rx="3" stroke="#F4EEDF" strokeWidth="1.5" />
                 <path d="M6 9.5L13 17L20 6" stroke="#D3A65C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               <span className="font-display text-lg italic">ViFlow</span>
-            </a>
+            </Link>
             <button
               onClick={() => setSidebarOpen(false)}
               className="focus-ring rounded-sm p-1 text-parchment/50 hover:text-parchment md:hidden"

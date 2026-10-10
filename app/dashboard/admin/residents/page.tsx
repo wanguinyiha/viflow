@@ -18,6 +18,16 @@ interface ResidentRow {
   room: { id: string; room_number: string; block: string; floor: number } | null;
 }
 
+async function fetchResidentRows(): Promise<ResidentRow[]> {
+  try {
+    const res = await fetch("/api/admin/data?type=residents");
+    const data = await res.json();
+    return data.residents ?? [];
+  } catch {
+    return [];
+  }
+}
+
 export default function ResidentsPage() {
   const { user: profile, loading: authLoading } = useAuth();
   const [residents, setResidents] = useState<ResidentRow[]>([]);
@@ -43,20 +53,18 @@ export default function ResidentsPage() {
 
   const loadResidents = useCallback(async () => {
     setLoading(true);
-    try {
-      const res = await fetch("/api/admin/data?type=residents");
-      const data = await res.json();
-      setResidents(data.residents ?? []);
-    } catch {
-      setResidents([]);
-    }
+    setResidents(await fetchResidentRows());
     setLoading(false);
   }, []);
 
   useEffect(() => {
     if (authLoading || !profile) return;
-    loadResidents();
-  }, [authLoading, profile, loadResidents]);
+    async function fetchInitialResidents() {
+      setResidents(await fetchResidentRows());
+      setLoading(false);
+    }
+    fetchInitialResidents();
+  }, [authLoading, profile]);
 
   async function loadAvailableRooms() {
     try {

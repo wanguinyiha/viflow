@@ -16,6 +16,13 @@ export default function ActiveVisitorsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
+  // Refresh the "duration" column once a minute instead of calling Date.now() during render.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
   useEffect(() => {
     if (authLoading || !profile) return;
 
@@ -82,11 +89,11 @@ export default function ActiveVisitorsPage() {
     if (!search.trim()) return visits;
     const q = search.toLowerCase();
     return visits.filter((v) => {
-      const visitorName = (v.visitor as any)?.full_name?.toLowerCase() ?? "";
-      const visitorEmail = (v.visitor as any)?.email?.toLowerCase() ?? "";
-      const residentName = (v.resident as any)?.full_name?.toLowerCase() ?? "";
-      const roomBlock = v.room ? `block ${(v.room as any).block}` : "";
-      const roomNumber = v.room ? `room ${((v.room as any).room_number as string).replace(/^[AB]-/, "")}` : "";
+      const visitorName = v.visitor?.full_name?.toLowerCase() ?? "";
+      const visitorEmail = v.visitor?.email?.toLowerCase() ?? "";
+      const residentName = v.resident?.full_name?.toLowerCase() ?? "";
+      const roomBlock = v.room ? `block ${v.room.block}` : "";
+      const roomNumber = v.room ? `room ${v.room.room_number.replace(/^[AB]-/, "")}` : "";
       return visitorName.includes(q) || visitorEmail.includes(q) || residentName.includes(q) || roomBlock.includes(q) || roomNumber.includes(q);
     });
   }, [visits, search]);
@@ -127,23 +134,23 @@ export default function ActiveVisitorsPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-ink/10 text-xs font-medium text-ink">
-                          {(v.visitor as any)?.full_name?.charAt(0) ?? "?"}
+                          {v.visitor?.full_name?.charAt(0) ?? "?"}
                         </div>
                         <div>
-                          <p className="font-medium text-ink">{(v.visitor as any)?.full_name ?? "—"}</p>
-                          <p className="text-xs text-ink/50">{(v.visitor as any)?.email}</p>
+                          <p className="font-medium text-ink">{v.visitor?.full_name ?? "—"}</p>
+                          <p className="text-xs text-ink/50">{v.visitor?.email}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-[15px] text-ink/70">{(v.resident as any)?.full_name ?? "—"}</td>
+                    <td className="px-4 py-3 text-[15px] text-ink/70">{v.resident?.full_name ?? "—"}</td>
                     <td className="px-4 py-3 text-[15px] text-ink/70">
-                      {v.room ? `Block ${(v.room as any).block} — Room ${((v.room as any).room_number as string).replace(/^[AB]-/, "")}` : "—"}
+                      {v.room ? `Block ${v.room.block} — Room ${v.room.room_number.replace(/^[AB]-/, "")}` : "—"}
                     </td>
                     <td className="px-4 py-3 font-mono text-sm text-ink/70">
                       {v.checked_in_at ? new Date(v.checked_in_at).toLocaleTimeString() : "—"}
                     </td>
                     <td className="px-4 py-3 text-sm text-ink/50">
-                      {v.checked_in_at ? `${Math.round((Date.now() - new Date(v.checked_in_at).getTime()) / 60000)}m` : "—"}
+                      {v.checked_in_at ? `${Math.round((now - new Date(v.checked_in_at).getTime()) / 60000)}m` : "—"}
                     </td>
                     <td className="px-4 py-3">
                       <button
