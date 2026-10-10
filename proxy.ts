@@ -29,28 +29,6 @@ export async function proxy(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
-  // Public routes - no auth required
-  const publicRoutes = [
-    "/",
-    "/about",
-    "/how-it-works",
-    "/help",
-    "/privacy",
-    "/terms",
-    "/login",
-    "/signup",
-    "/forgot-password",
-    "/reset-password",
-    "/forbidden",
-    "/invite",
-    "/register",
-    "/pass",
-  ];
-
-  const isPublicRoute = publicRoutes.some(
-    (route) => pathname === route || pathname.startsWith(route + "/")
-  );
-
   // Allow API routes, static files, images
   if (
     pathname.startsWith("/api/") ||
@@ -60,10 +38,16 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
-  // If on a public route, allow access
-  if (isPublicRoute) {
-    // If logged in and trying to access login/signup, redirect to dashboard
-    if (user && (pathname === "/login" || pathname === "/signup")) {
+  const protectedRoutes = ["/dashboard"];
+
+  const isProtectedRoute = protectedRoutes.some(
+    (route) => pathname === route || pathname.startsWith(route + "/")
+  );
+
+  const authRoutes = ["/login", "/signup"];
+
+  if (authRoutes.includes(pathname)) {
+    if (user) {
       const { data: profile } = await supabase
         .from("profiles")
         .select("role")
@@ -73,6 +57,10 @@ export async function proxy(request: NextRequest) {
       const role = profile?.role ?? "visitor";
       return NextResponse.redirect(new URL(`/dashboard/${role}`, request.url));
     }
+    return response;
+  }
+
+  if (!isProtectedRoute) {
     return response;
   }
 
